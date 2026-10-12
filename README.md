@@ -2,6 +2,8 @@
 
 Crewami の完成イメージと操作感を、人が実際に触って評価するためのスマートフォン風 UI プロトタイプです。
 
+**Live prototype:** <https://kaito-ishii159.github.io/Crewami-mock/>
+
 > [!IMPORTANT]
 > このリポジトリは本番 Crewami とは別の UX 検証用モックです。バックエンド、DB、本物の認証・位置情報・通知・決済はなく、表示データと状態変更はすべてブラウザ内の固定データです。
 
