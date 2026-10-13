@@ -1,577 +1,219 @@
 'use client';
 
-import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  BadgeCheck,
-  BellRing,
-  BriefcaseBusiness,
-  Building2,
-  CalendarCheck2,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  CircleDollarSign,
-  Clock3,
-  Coffee,
-  CreditCard,
-  Crown,
-  FilePenLine,
-  Gift,
-  Globe2,
-  HelpCircle,
-  Languages,
-  LocateFixed,
-  LockKeyhole,
-  LogOut,
-  Mail,
-  MapPin,
-  MapPinned,
-  MessageCircleMore,
-  Minus,
-  Navigation,
-  Plus,
-  QrCode,
-  ReceiptText,
-  Send,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
-  Store,
-  TimerReset,
-  UserPlus,
-  UsersRound,
-  WalletCards,
+  AlertTriangle, ArrowLeft, ArrowRight, BellRing, BriefcaseBusiness, Building2,
+  CalendarCheck2, CalendarDays, Check, ChevronRight, CircleDollarSign, Clock3,
+  CreditCard, FilePenLine, Globe2, Languages, LockKeyhole, LogOut,
+  MapPin, MapPinned, MessageCircleMore, Navigation, Plus, QrCode, ReceiptText, Search, Send,
+  ShieldCheck, Smartphone, Store, UsersRound, WalletCards,
 } from 'lucide-react';
-import { people, stores, translate, type AttendanceState, type Locale, type Role, type Scenario, type Screen } from '@/lib/prototype';
+import {
+  translate,
+  type AttendanceState,
+  type Locale,
+  type Role,
+  type Scenario,
+  type Screen,
+  type ShiftDay,
+  type StaffRecord,
+  type StoreRecord,
+} from '@/lib/prototype';
 import type { ModalState } from './CrewamiPrototype';
+import { ScheduleTimeline } from './ScheduleTimeline';
 
 interface ScreenProps {
   role: Role;
   locale: Locale;
   scenario: Scenario;
   screen: Screen;
-  storeIndex: number;
+  storeId: string;
+  stores: StoreRecord[];
+  setStores: Dispatch<SetStateAction<StoreRecord[]>>;
+  staff: StaffRecord[];
+  setStaff: Dispatch<SetStateAction<StaffRecord[]>>;
+  shiftDays: ShiftDay[];
+  setShiftDays: Dispatch<SetStateAction<ShiftDay[]>>;
+  selectedStaffId: string;
+  setSelectedStaffId: Dispatch<SetStateAction<string>>;
+  editingStaffId: string | null;
+  setEditingStaffId: Dispatch<SetStateAction<string | null>>;
+  editingStoreId: string | null;
+  setEditingStoreId: Dispatch<SetStateAction<string | null>>;
   attendance: AttendanceState;
-  gpsSharing: boolean;
-  applied: boolean;
-  hired: boolean;
-  published: boolean;
-  assigned: string[];
-  navigate: Dispatch<SetStateAction<Screen>>;
   setAttendance: Dispatch<SetStateAction<AttendanceState>>;
+  gpsSharing: boolean;
   setGpsSharing: Dispatch<SetStateAction<boolean>>;
+  applied: boolean;
   setApplied: Dispatch<SetStateAction<boolean>>;
+  hired: boolean;
   setHired: Dispatch<SetStateAction<boolean>>;
+  published: boolean;
   setPublished: Dispatch<SetStateAction<boolean>>;
-  setAssigned: Dispatch<SetStateAction<string[]>>;
+  availabilitySubmitted: boolean;
+  setAvailabilitySubmitted: Dispatch<SetStateAction<boolean>>;
+  collectionActive: boolean;
+  setCollectionActive: Dispatch<SetStateAction<boolean>>;
+  correctionStatus: 'pending' | 'approved' | 'rejected';
+  setCorrectionStatus: Dispatch<SetStateAction<'pending' | 'approved' | 'rejected'>>;
+  notifications: { shift: boolean; attendance: boolean; recruitment: boolean };
+  setNotifications: Dispatch<SetStateAction<{ shift: boolean; attendance: boolean; recruitment: boolean }>>;
+  setLocale: Dispatch<SetStateAction<Locale>>;
+  navigate: Dispatch<SetStateAction<Screen>>;
   openModal: Dispatch<SetStateAction<ModalState>>;
 }
 
 type SharedProps = Pick<ScreenProps, 'locale' | 'navigate'>;
 
-function PageTitle({
-  title,
-  subtitle,
-  onBack,
-  action,
-}: {
-  title: string;
-  subtitle?: string;
-  onBack?: () => void;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="page-title">
-      {onBack && <button className="back-button" onClick={onBack} aria-label="Back"><ArrowLeft size={20} /></button>}
-      <div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
-      {action && <div className="page-title-action">{action}</div>}
-    </div>
-  );
+function PageTitle({ title, subtitle, onBack, action }: { title: string; subtitle?: string; onBack?: () => void; action?: React.ReactNode }) {
+  return <div className="page-title">{onBack && <button className="back-button" onClick={onBack} aria-label="Back"><ArrowLeft size={20} /></button>}<div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action && <div className="page-title-action">{action}</div>}</div>;
 }
 
 function Avatar({ name, color = '#2c7b73', small = false }: { name: string; color?: string; small?: boolean }) {
-  const initials = name.includes(' ') ? name.split(' ').map((part) => part[0]).slice(0, 2).join('') : name.slice(0, 2);
-  return <span className={small ? 'avatar avatar--small' : 'avatar'} style={{ backgroundColor: color }}>{initials}</span>;
+  return <span className={small ? 'avatar avatar--small' : 'avatar'} style={{ backgroundColor: color }}>{name.replace(' ', '').slice(0, 2)}</span>;
 }
 
-function SectionHead({ title, action }: { title: string; action?: string }) {
-  return <div className="section-head"><h3>{title}</h3>{action && <button>{action} <ChevronRight size={14} /></button>}</div>;
+function SectionHead({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  return <div className="section-head"><h3>{title}</h3>{action && onAction && <button onClick={onAction}>{action}<ChevronRight size={14} /></button>}</div>;
 }
 
 function StatusPill({ tone, children }: { tone: 'mint' | 'orange' | 'red' | 'gray' | 'purple'; children: React.ReactNode }) {
   return <span className={`status-pill status-pill--${tone}`}>{children}</span>;
 }
 
-function OwnerHome({ locale, role, navigate }: SharedProps & { role: Role }) {
+function AdminHome({ locale, navigate, published }: SharedProps & { published: boolean }) {
   const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const name = role === 'OWNER' ? tx('石井さん', 'Kaito') : tx('山田さん', 'Hana');
-  return (
-    <div className="screen owner-home">
-      <div className="greeting-row">
-        <div><p className="overline">MONDAY · OCT 12</p><h2>{tx(`こんにちは、${name}`, `Hi, ${name}`)}</h2></div>
-        <Avatar name={name} color={role === 'OWNER' ? '#123f43' : '#ef8c62'} />
-      </div>
-
-      <section className="action-hero">
-        <div className="hero-label"><CalendarCheck2 size={16} /><span>{tx('11月のシフト', 'NOVEMBER SCHEDULE')}</span></div>
-        <h3>{tx('公開まで、あと2ステップ', 'Two steps until you’re ready')}</h3>
-        <div className="workflow-steps">
-          <button className="workflow-step complete" onClick={() => navigate('collection')}>
-            <span className="step-index"><Check size={14} /></span><span><small>{tx('希望を集める', 'Collect')}</small><strong>8 / 12</strong></span>
-          </button>
-          <span className="workflow-line complete" />
-          <button className="workflow-step active" onClick={() => navigate('builder')}>
-            <span className="step-index">2</span><span><small>{tx('シフトを組む', 'Build')}</small><strong>{tx('3枠不足', '3 gaps')}</strong></span>
-          </button>
-          <span className="workflow-line" />
-          <button className="workflow-step" onClick={() => navigate('publish')}>
-            <span className="step-index">3</span><span><small>{tx('公開する', 'Publish')}</small><strong>{tx('未公開', 'Draft')}</strong></span>
-          </button>
-        </div>
-        <button className="hero-cta" onClick={() => navigate('builder')}>{tx('シフト作成を続ける', 'Continue building')}<ArrowRight size={17} /></button>
-      </section>
-
-      <SectionHead title={tx('今日のチーム', 'Today’s team')} action={tx('勤怠を見る', 'View attendance')} />
-      <button className="team-summary card-button" onClick={() => navigate('teamAttendance')}>
-        <span><i className="dot dot--green" /><strong>4</strong><small>{tx('勤務中', 'Working')}</small></span>
-        <span><i className="dot dot--orange" /><strong>1</strong><small>{tx('休憩中', 'On break')}</small></span>
-        <span><i className="dot dot--gray" /><strong>2</strong><small>{tx('未出勤', 'Not in')}</small></span>
-      </button>
-
-      <SectionHead title={tx('対応が必要です', 'Needs attention')} />
-      <button className="urgent-card card-button" onClick={() => navigate('openShifts')}>
-        <span className="urgent-icon"><AlertTriangle size={19} /></span>
-        <span className="urgent-copy"><small>{tx('急募 · あと1名', 'URGENT · 1 PERSON NEEDED')}</small><strong>{tx('本日 18:00〜22:00', 'Today, 18:00–22:00')}</strong><em>{tx('ディナーのホール担当', 'Dinner floor coverage')}</em></span>
-        <ChevronRight size={18} />
-      </button>
-
-      <div className="insight-card">
-        <span className="insight-icon"><Sparkles size={18} /></span>
-        <div><strong>{tx('今週は順調です', 'This week looks healthy')}</strong><p>{tx('予定時間の92%が充足しています。', '92% of scheduled hours are covered.')}</p></div>
-      </div>
-    </div>
-  );
+  return <div className="screen admin-home">
+    <div className="greeting-row"><div><p className="overline">TUESDAY · NOV 10</p><h2>{tx('お疲れさまです', 'Welcome back')}</h2></div><Avatar name={tx('管理者', 'Admin')} color="#123f43" /></div>
+    <section className="action-hero"><div className="hero-label"><CalendarCheck2 size={16} /><span>{tx('11月のシフト', 'NOVEMBER SCHEDULE')}</span></div><h3>{published ? tx('シフトは公開済みです', 'Schedule is published') : tx('公開まで、あと2ステップ', 'Two steps until ready')}</h3><div className="workflow-steps">
+      <button className="workflow-step complete" onClick={() => navigate('collection')}><span className="step-index"><Check size={14} /></span><span><small>{tx('希望を集める', 'Collect')}</small><strong>8 / 12</strong></span></button><span className="workflow-line complete" />
+      <button className="workflow-step active" onClick={() => navigate('builder')}><span className="step-index">2</span><span><small>{tx('シフトを組む', 'Build')}</small><strong>2 / 6</strong></span></button><span className="workflow-line" />
+      <button className="workflow-step" onClick={() => navigate('publish')}><span className="step-index">3</span><span><small>{tx('公開する', 'Publish')}</small><strong>{published ? tx('公開済み', 'Published') : tx('未公開', 'Draft')}</strong></span></button>
+    </div><button className="hero-cta" onClick={() => navigate('builder')}>{tx('シフト作成を続ける', 'Continue building')}<ArrowRight size={17} /></button></section>
+    <SectionHead title={tx('今日のチーム', 'Today’s team')} action={tx('勤怠を見る', 'View attendance')} onAction={() => navigate('teamAttendance')} />
+    <button className="team-summary card-button" onClick={() => navigate('teamAttendance')}><span><i className="dot dot--green" /><strong>4</strong><small>{tx('勤務中', 'Working')}</small></span><span><i className="dot dot--orange" /><strong>1</strong><small>{tx('休憩中', 'On break')}</small></span><span><i className="dot dot--gray" /><strong>2</strong><small>{tx('未出勤', 'Not in')}</small></span></button>
+    <div className="quick-grid"><button onClick={() => navigate('openShifts')}><BriefcaseBusiness /><span><strong>{tx('欠員募集', 'Open shifts')}</strong><small>{tx('応募 2件', '2 applicants')}</small></span></button><button onClick={() => navigate('gps')}><MapPinned /><span><strong>{tx('GPSマップ', 'GPS map')}</strong><small>{tx('共有 3人', '3 sharing')}</small></span></button><button onClick={() => navigate('staff')}><UsersRound /><span><strong>{tx('スタッフ', 'Staff')}</strong><small>{tx('6人を管理', 'Manage 6')}</small></span></button><button onClick={() => navigate('payroll')}><CircleDollarSign /><span><strong>{tx('給与概算', 'Pay estimate')}</strong><small>¥428,600</small></span></button></div>
+  </div>;
 }
 
-function MemberHome({ locale, navigate }: SharedProps) {
+function MemberHome({ locale, navigate, attendance, availabilitySubmitted }: SharedProps & { attendance: AttendanceState; availabilitySubmitted: boolean }) {
   const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return (
-    <div className="screen member-home">
-      <div className="greeting-row member-greeting"><div><p className="overline">MONDAY · OCT 12</p><h2>{tx('こんにちは、田中さん', 'Hi, Taro')}</h2></div><Avatar name={tx('田中 太郎', 'Taro Tanaka')} /></div>
-      <section className="today-shift-card">
-        <div className="shift-card-top"><span><i className="live-dot" />{tx('今日の勤務', 'TODAY’S SHIFT')}</span><StatusPill tone="mint">{tx('あと20分', 'IN 20 MIN')}</StatusPill></div>
-        <div className="shift-time"><strong>18:00</strong><span><i /><small>5h</small></span><strong>23:00</strong></div>
-        <div className="shift-location"><MapPin size={16} /><span>{tx('渋谷店 · ホール', 'Shibuya · Floor')}</span></div>
-        <button className="white-button" onClick={() => navigate('attendance')}><Clock3 size={17} />{tx('出勤画面を開く', 'Open time clock')}</button>
-      </section>
-      <SectionHead title={tx('次の勤務', 'Up next')} action={tx('すべて見る', 'See all')} />
-      <div className="upcoming-list">
-        <button onClick={() => navigate('schedule')}><span className="date-tile"><small>OCT</small><strong>15</strong></span><span><strong>18:00 — 22:00</strong><small>{tx('渋谷店 · ホール', 'Shibuya · Floor')}</small></span><ChevronRight size={17} /></button>
-        <button onClick={() => navigate('schedule')}><span className="date-tile"><small>OCT</small><strong>18</strong></span><span><strong>12:00 — 18:00</strong><small>{tx('渋谷店 · キッチン', 'Shibuya · Kitchen')}</small></span><ChevronRight size={17} /></button>
-      </div>
-      <SectionHead title={tx('募集中のシフト', 'Open shifts')} />
-      <button className="open-shift-teaser" onClick={() => navigate('openShifts')}>
-        <span className="briefcase-icon"><BriefcaseBusiness size={20} /></span><span><small>{tx('急募 · あと1名', 'URGENT · 1 SPOT')}</small><strong>{tx('10月20日 · 18:00〜22:00', 'Oct 20 · 18:00–22:00')}</strong></span><ChevronRight size={18} />
-      </button>
-    </div>
-  );
+  return <div className="screen member-home"><div className="greeting-row"><div><p className="overline">TUESDAY · NOV 10</p><h2>{tx('今日もよろしくお願いします', 'Have a great shift')}</h2></div><Avatar name={tx('スタッフ', 'Member')} color="#d66982" /></div>
+    <button className="today-shift" onClick={() => navigate('attendance')}><div className="today-date"><strong>10</strong><small>NOV</small></div><div><span className="eyebrow">{tx('今日の勤務', 'TODAY’S SHIFT')}</span><h3>10:00 — 18:00</h3><p>{tx('渋谷店 · 休憩 1時間', 'Shibuya · 1h break')}</p></div><ChevronRight /></button>
+    <section className={availabilitySubmitted ? 'availability-callout complete-card' : 'availability-callout'}><CalendarDays /><div><strong>{availabilitySubmitted ? tx('希望を提出済み', 'Availability submitted') : tx('11月後半の希望を提出', 'Submit late-November availability')}</strong><p>{availabilitySubmitted ? tx('いつでも内容を変更できます。', 'You can update it anytime.') : tx('締切 11月12日 · あと2日', 'Due Nov 12 · 2 days left')}</p></div><button onClick={() => navigate('availability')}>{availabilitySubmitted ? tx('確認・変更', 'Review') : tx('回答する', 'Submit')}</button></section>
+    <SectionHead title={tx('次の勤務', 'Next shift')} action={tx('すべて見る', 'View all')} onAction={() => navigate('schedule')} /><button className="next-shift card-button" onClick={() => navigate('schedule')}><div><strong>12</strong><small>{tx('木', 'THU')}</small></div><span><strong>18:00 — 23:30</strong><small>{tx('池袋店 · 確定', 'Ikebukuro · Confirmed')}</small></span><ChevronRight /></button>
+    <div className="member-actions"><button onClick={() => navigate('openShifts')}><BriefcaseBusiness /><span>{tx('募集中のシフト', 'Open shifts')}</span><b>3</b></button><button onClick={() => navigate('gps')}><Navigation /><span>{tx('位置情報共有', 'Location sharing')}</span><small>{tx('任意', 'Optional')}</small></button><button onClick={() => navigate('attendanceHistory')}><ReceiptText /><span>{tx('勤怠履歴', 'Attendance history')}</span><ChevronRight /></button></div>
+    {attendance === 'working' && <button className="working-banner" onClick={() => navigate('attendance')}><span className="live-dot" /><span><strong>{tx('勤務中です', 'You’re clocked in')}</strong><small>10:02 {tx('に出勤', 'clock-in')}</small></span><Clock3 /></button>}
+  </div>;
 }
 
-function CollectionScreen({ locale, navigate, openModal }: SharedProps & Pick<ScreenProps, 'openModal'>) {
+function CollectionScreen({ locale, navigate, staff, collectionActive, setCollectionActive, openModal }: Pick<ScreenProps, 'locale' | 'navigate' | 'staff' | 'collectionActive' | 'setCollectionActive' | 'openModal'>) {
   const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const staff = [
-    [tx('田中 太郎', 'Taro Tanaka'), true, '2h'],
-    [tx('山田 花子', 'Hana Yamada'), true, '4h'],
-    [tx('高橋 健', 'Ken Takahashi'), true, '1d'],
-    [tx('鈴木 一郎', 'Ichiro Suzuki'), false, ''],
-    [tx('佐藤 美咲', 'Misaki Sato'), false, ''],
-  ] as const;
-  return (
-    <div className="screen">
-      <PageTitle title={tx('希望を集める', 'Collect availability')} subtitle={tx('11月シフト · 期限 10月20日', 'November · Due Oct 20')} onBack={() => navigate('home')} />
-      <section className="collection-progress">
-        <div className="progress-ring"><strong>8</strong><span>/ 12</span></div>
-        <div><small>{tx('提出状況', 'RESPONSES')}</small><h3>{tx('あと4人です', '4 people to go')}</h3><p>{tx('締切まであと8日', '8 days left')}</p></div>
-      </section>
-      <div className="action-pair">
-        <button className="secondary-button" onClick={() => openModal({ type: 'qr' })}><QrCode size={18} />{tx('回答用QR', 'QR code')}</button>
-        <button className="primary-button" onClick={() => openModal({ type: 'success', title: tx('通知しました', 'Reminder sent'), body: tx('未提出の4名に通知を送りました。', 'A reminder was sent to 4 people.') })}><BellRing size={18} />{tx('未提出者に通知', 'Send reminder')}</button>
-      </div>
-      <SectionHead title={tx('スタッフ', 'Staff')} action={tx('12人', '12 people')} />
-      <div className="people-list">
-        {staff.map(([name, done, time], index) => (
-          <div key={name} className="person-row">
-            <Avatar name={name} color={people[index]?.color} small />
-            <span><strong>{name}</strong><small>{done ? tx(`${time}前に提出`, `Submitted ${time} ago`) : tx('まだ提出していません', 'Not submitted yet')}</small></span>
-            {done ? <span className="round-check"><Check size={14} /></span> : <StatusPill tone="gray">{tx('未提出', 'PENDING')}</StatusPill>}
-          </div>
-        ))}
-      </div>
-      <button className="wide-ghost-button" onClick={() => navigate('availability')}><Globe2 size={17} />{tx('登録不要の回答画面を確認', 'Preview no-sign-up form')}</button>
-    </div>
-  );
+  const [reminded, setReminded] = useState<string[]>([]);
+  if (!collectionActive) return <div className="screen"><PageTitle title={tx('希望シフト収集', 'Availability collection')} /><div className="empty-state"><CalendarDays /><h3>{tx('進行中の収集はありません', 'No active collection')}</h3><p>{tx('対象期間と締切を決めて、新しい希望収集を始めましょう。', 'Choose dates and a deadline to start collecting.')}</p><button className="primary-button" onClick={() => navigate('availabilityRequest')}>{tx('新しい収集を作成', 'Create request')}</button></div></div>;
+  const submitted = staff.slice(0, 4);
+  const pending = staff.slice(4);
+  return <div className="screen"><PageTitle title={tx('希望シフト収集', 'Availability collection')} subtitle={tx('11月16日〜30日', 'Nov 16–30')} onBack={() => navigate('home')} action={<button className="text-button" onClick={() => navigate('availabilityRequest')}>{tx('新規', 'New')}</button>} />
+    <div className="progress-card"><div><span>{tx('回答状況', 'Responses')}</span><strong>4 / 6</strong></div><div className="progress-track"><i style={{ width: '67%' }} /></div><p>{tx('締切 11月12日 23:59', 'Due Nov 12 at 23:59')}</p></div>
+    <div className="inline-actions"><button onClick={() => openModal({ type: 'qr' })}><QrCode size={17} />{tx('QRを表示', 'Show QR')}</button><button onClick={() => { setReminded(pending.map((person) => person.id)); openModal({ type: 'success', title: tx('リマインド送信済み', 'Reminders sent'), body: tx('未提出の2名へ通知しました。', 'Notified 2 pending members.') }); }}><Send size={17} />{tx('未提出者に通知', 'Remind pending')}</button></div>
+    <SectionHead title={tx('提出済み', 'Submitted')} /><div className="list-card">{submitted.map((person) => <div className="person-row" key={person.id}><Avatar name={person[locale]} color={person.color} small /><span><strong>{person[locale]}</strong><small>{tx('8日分を提出', '8 days submitted')}</small></span><StatusPill tone="mint">{tx('提出済み', 'Submitted')}</StatusPill></div>)}</div>
+    <SectionHead title={tx('未提出', 'Pending')} /><div className="list-card">{pending.map((person) => <div className="person-row" key={person.id}><Avatar name={person[locale]} color={person.color} small /><span><strong>{person[locale]}</strong><small>{reminded.includes(person.id) ? tx('通知済み', 'Reminder sent') : tx('未回答', 'No response')}</small></span><button className="mini-button" disabled={reminded.includes(person.id)} onClick={() => setReminded((items) => [...items, person.id])}>{reminded.includes(person.id) ? <Check size={15} /> : tx('通知', 'Remind')}</button></div>)}</div>
+    <button className="secondary-button full-button" onClick={() => setCollectionActive(false)}>{tx('この収集を終了', 'Close collection')}</button>
+  </div>;
 }
 
-function AvailabilityScreen({ locale, navigate, openModal }: SharedProps & Pick<ScreenProps, 'openModal'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const [step, setStep] = useState(1);
-  const [choices, setChoices] = useState<Record<number, string>>({ 0: 'preferred', 1: 'available', 2: 'unavailable' });
-  const days = locale === 'ja' ? [['11/1', '土'], ['11/2', '日'], ['11/3', '月']] : [['Nov 1', 'Sat'], ['Nov 2', 'Sun'], ['Nov 3', 'Mon']];
-  return (
-    <div className="screen public-form-screen">
-      <PageTitle title={tx('11月シフト希望', 'November availability')} subtitle={`${stores[locale][0]} · ${tx('登録は不要です', 'No account required')}`} onBack={() => navigate('collection')} />
-      <div className="form-stepper"><i className="done" /><span /><i className={step === 2 ? 'done' : ''} /><em>{step} / 2</em></div>
-      {step === 1 ? (
-        <section className="identity-panel">
-          <span className="privacy-icon"><LockKeyhole size={20} /></span>
-          <h3>{tx('あなたを確認します', 'Let’s confirm it’s you')}</h3>
-          <p>{tx('管理者から案内された名前とPINを入力してください。', 'Use the name and PIN shared by your manager.')}</p>
-          <label>{tx('あなたの名前', 'Your name')}<select defaultValue="taro"><option value="taro">{tx('田中 太郎', 'Taro Tanaka')}</option><option>{tx('佐藤 美咲', 'Misaki Sato')}</option></select></label>
-          <label>PIN<input inputMode="numeric" defaultValue="••••" aria-label="PIN" /></label>
-          <button className="primary-button" onClick={() => setStep(2)}>{tx('次へ', 'Continue')}<ArrowRight size={17} /></button>
-          <small><ShieldCheck size={14} />{tx('この情報は本人確認にのみ使用されます', 'Used only to verify your identity')}</small>
-        </section>
-      ) : (
-        <>
-          <div className="availability-legend"><span><i className="preferred" />{tx('希望', 'Prefer')}</span><span><i className="available" />{tx('勤務可能', 'Available')}</span><span><i className="unavailable" />{tx('不可', 'Can’t work')}</span></div>
-          <div className="availability-days">
-            {days.map(([date, weekday], index) => {
-              const choice = choices[index] ?? 'available';
-              return (
-                <article key={date} className="availability-day">
-                  <div className="day-heading"><span><strong>{date}</strong><small>{weekday}</small></span>{choice !== 'unavailable' && <StatusPill tone={choice === 'preferred' ? 'mint' : 'purple'}>{choice === 'preferred' ? tx('希望', 'PREFER') : tx('勤務可能', 'AVAILABLE')}</StatusPill>}</div>
-                  <div className="choice-row">
-                    {[['preferred', '○', tx('希望', 'Prefer')], ['available', '△', tx('勤務可能', 'Available')], ['unavailable', '×', tx('不可', 'Can’t')]].map(([value, mark, label]) => <button key={value} className={choice === value ? `selected ${value}` : ''} onClick={() => setChoices((current) => ({ ...current, [index]: value }))}><b>{mark}</b><span>{label}</span></button>)}
-                  </div>
-                  {choice !== 'unavailable' && <div className="time-inputs"><label>{tx('開始', 'From')}<input type="time" defaultValue={index === 0 ? '18:00' : '12:00'} /></label><Minus size={16} /><label>{tx('終了', 'To')}<input type="time" defaultValue={index === 0 ? '23:00' : '18:00'} /></label></div>}
-                </article>
-              );
-            })}
-          </div>
-          <button className="primary-button sticky-action" onClick={() => openModal({ type: 'success', title: tx('希望を提出しました', 'Availability submitted'), body: tx('提出内容は締切まで何度でも更新できます。', 'You can update your response until the deadline.') })}><Send size={17} />{tx('この内容で提出', 'Submit availability')}</button>
-        </>
-      )}
-    </div>
-  );
+function AvailabilityRequestScreen({ locale, navigate, setCollectionActive, openModal }: Pick<ScreenProps, 'locale' | 'navigate' | 'setCollectionActive' | 'openModal'>) {
+  const tx = (ja: string, en: string) => translate(locale, ja, en); const [period, setPeriod] = useState('2026-11-16'); const [deadline, setDeadline] = useState('2026-11-12T23:59');
+  return <div className="screen"><PageTitle title={tx('希望収集を作成', 'New collection')} onBack={() => navigate('collection')} /><form className="mock-form" onSubmit={(event) => { event.preventDefault(); setCollectionActive(true); openModal({ type: 'success', title: tx('収集を開始しました', 'Collection started'), body: tx('スタッフへ回答依頼を通知しました。', 'The team has been notified.') }); navigate('collection'); }}><label><span>{tx('対象期間の開始', 'Period starts')}</span><input type="date" value={period} onChange={(event) => setPeriod(event.target.value)} /></label><label><span>{tx('回答締切', 'Deadline')}</span><input type="datetime-local" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label><div className="form-note"><BellRing size={18} /><p>{tx('開始時にメンバーへアプリ通知を送ります。QRからも登録なしで回答できます。', 'Members receive a notification and can also respond by QR without signing up.')}</p></div><button className="primary-button" type="submit">{tx('収集を開始', 'Start collection')}</button></form></div>;
 }
 
-function BuilderScreen({ locale, navigate, assigned, setAssigned }: SharedProps & Pick<ScreenProps, 'assigned' | 'setAssigned'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const [date, setDate] = useState(2);
-  const dates = locale === 'ja' ? [['8', '土'], ['9', '日'], ['10', '月'], ['11', '火'], ['12', '水']] : [['8', 'Sat'], ['9', 'Sun'], ['10', 'Mon'], ['11', 'Tue'], ['12', 'Wed']];
-  const candidates = [
-    { id: '田中 太郎', name: tx('田中 太郎', 'Taro Tanaka'), availability: tx('希望', 'Preferred'), time: '18:00–22:00', tone: 'mint' as const },
-    { id: '山田 花子', name: tx('山田 花子', 'Hana Yamada'), availability: tx('勤務可能', 'Available'), time: '15:00–23:00', tone: 'purple' as const },
-    { id: '佐藤 美咲', name: tx('佐藤 美咲', 'Misaki Sato'), availability: tx('勤務可能', 'Available'), time: '18:00–23:00', tone: 'purple' as const },
-  ];
-  const assignedCount = assigned.length;
-  return (
-    <div className="screen builder-screen">
-      <PageTitle title={tx('シフトを組む', 'Build schedule')} subtitle={tx('11月 · 下書き', 'November · Draft')} onBack={() => navigate('home')} action={<button className="text-button" onClick={() => navigate('publish')}>{tx('確認', 'Review')}</button>} />
-      <div className="date-strip">
-        {dates.map(([day, weekday], index) => <button key={day} className={date === index ? 'active' : ''} onClick={() => setDate(index)}><small>{weekday}</small><strong>{day}</strong>{index === 2 && <i />}</button>)}
-      </div>
-      <section className="coverage-card">
-        <div className="coverage-title"><span><small>{tx('必要人数', 'COVERAGE')}</small><strong>{date === 2 ? tx('11月10日（月）', 'Monday, Nov 10') : tx(`11月${dates[date][0]}日`, `November ${dates[date][0]}`)}</strong></span><StatusPill tone={assignedCount > 2 ? 'mint' : 'red'}>{assignedCount > 2 ? tx('充足', 'COVERED') : `-${Math.max(1, 3 - assignedCount)}`}</StatusPill></div>
-        {[['12–15', 4, 4], ['15–18', 3, 3], ['18–22', 5, Math.min(5, 2 + assignedCount)]].map(([time, need, current]) => <div className="coverage-row" key={time}><span>{time}</span><div className="coverage-track"><i style={{ width: `${(Number(current) / Number(need)) * 100}%` }} className={Number(current) < Number(need) ? 'short' : ''} /></div><b>{current}/{need}</b></div>)}
-        <div className="shortage-callout"><AlertTriangle size={16} /><span><strong>18:00–19:00</strong>{tx(` あと${Math.max(1, 3 - assignedCount)}人必要です`, ` needs ${Math.max(1, 3 - assignedCount)} more`)}</span></div>
-      </section>
-      <SectionHead title={tx('スタッフ候補', 'Available staff')} action={tx('希望順', 'By preference')} />
-      <div className="candidate-list">
-        {candidates.map((person, index) => {
-          const isAssigned = assigned.includes(person.id);
-          return <article key={person.id} className={isAssigned ? 'candidate assigned' : 'candidate'}><div className="candidate-main"><Avatar name={person.name} color={people[index].color} small /><span><strong>{person.name}</strong><small>{person.time}</small></span><StatusPill tone={person.tone}>{person.availability}</StatusPill></div>{isAssigned ? <button className="assigned-button" onClick={() => setAssigned((current) => current.filter((id) => id !== person.id))}><Check size={15} />{tx('割当済み', 'Assigned')}</button> : <button className="assign-button" onClick={() => setAssigned((current) => [...current, person.id])}><Plus size={15} />{tx('この時間で割り当て', 'Assign this shift')}</button>}</article>;
-        })}
-      </div>
-      <button className="primary-button sticky-action" onClick={() => navigate('publish')}>{tx('公開前の確認へ', 'Review schedule')}<ArrowRight size={17} /></button>
-    </div>
-  );
+function AvailabilityScreen({ locale, navigate, submitted, setSubmitted, openModal }: SharedProps & { submitted: boolean; setSubmitted: Dispatch<SetStateAction<boolean>>; openModal: ScreenProps['openModal'] }) {
+  const tx = (ja: string, en: string) => translate(locale, ja, en); const dates = ['11/16', '11/17', '11/18', '11/19', '11/20']; const [choices, setChoices] = useState<Record<string, string>>(Object.fromEntries(dates.map((date, index) => [date, index < 3 ? '10:00–18:00' : tx('休み', 'Off')])));
+  const updateAll = () => setChoices(Object.fromEntries(dates.map((date) => [date, '10:00–18:00'])));
+  return <div className="screen"><PageTitle title={submitted ? tx('提出内容', 'Your availability') : tx('勤務希望を回答', 'Submit availability')} subtitle={tx('11月16日〜30日', 'Nov 16–30')} onBack={() => navigate('home')} /><div className="inline-actions"><button onClick={updateAll}>{tx('希望時間を一括入力', 'Set all preferred')}</button><button onClick={() => setChoices((current) => ({ ...current, '11/20': current['11/16'] }))}>{tx('曜日からコピー', 'Copy weekday')}</button></div><div className="availability-days">{dates.map((date) => <div key={date} className="availability-day"><div><strong>{date}</strong><small>{tx('勤務可否', 'Availability')}</small></div><select value={choices[date]} onChange={(event) => setChoices((current) => ({ ...current, [date]: event.target.value }))}><option>10:00–18:00</option><option>12:00–20:00</option><option>17:00–23:30</option><option>{tx('休み', 'Off')}</option></select></div>)}</div><button className="primary-button full-button" onClick={() => { setSubmitted(true); openModal({ type: 'success', title: tx('希望を保存しました', 'Availability saved'), body: tx('管理者へ回答内容が共有されました。', 'Your response was shared with the admin.') }); }}>{submitted ? tx('変更を保存', 'Save changes') : tx('この内容で提出', 'Submit availability')}</button></div>;
 }
 
-function PublishScreen({ locale, navigate, published, setPublished, openModal }: SharedProps & Pick<ScreenProps, 'published' | 'setPublished' | 'openModal'>) {
+function BuilderScreen({ locale, navigate, staff, shiftDays, setShiftDays }: Pick<ScreenProps, 'locale' | 'navigate' | 'staff' | 'shiftDays' | 'setShiftDays'>) {
   const tx = (ja: string, en: string) => translate(locale, ja, en);
-  if (published) return <div className="screen published-screen"><span className="published-orb"><Check size={38} /></span><small>{tx('11月シフト', 'NOVEMBER SCHEDULE')}</small><h2>{tx('公開しました！', 'Schedule published!')}</h2><p>{tx('12人のスタッフへ通知を送りました。変更があれば、いつでも更新できます。', 'All 12 staff members have been notified. You can update it anytime.')}</p><div className="published-summary"><span><CalendarCheck2 size={20} /><strong>142h</strong><small>{tx('総勤務時間', 'scheduled')}</small></span><span><UsersRound size={20} /><strong>12</strong><small>{tx('スタッフ', 'staff')}</small></span></div><button className="primary-button" onClick={() => navigate('home')}>{tx('ホームへ戻る', 'Back to home')}</button></div>;
-  return (
-    <div className="screen publish-screen">
-      <PageTitle title={tx('公開前の確認', 'Review & publish')} subtitle={tx('11月シフト', 'November schedule')} onBack={() => navigate('builder')} />
-      <section className="readiness-card"><div className="readiness-score"><strong>92</strong><small>%</small></div><div><small>{tx('シフト完成度', 'SCHEDULE HEALTH')}</small><h3>{tx('ほぼ準備完了です', 'Almost ready')}</h3><p>{tx('1件の人員不足があります', '1 coverage gap remains')}</p></div></section>
-      <div className="review-list">
-        <div><span className="review-icon good"><Check size={16} /></span><span><strong>{tx('12人を割り当て済み', '12 staff assigned')}</strong><small>{tx('全員の希望を確認済み', 'All availability reviewed')}</small></span><ChevronRight size={17} /></div>
-        <div><span className="review-icon warn"><AlertTriangle size={16} /></span><span><strong>{tx('人員不足 1件', '1 coverage gap')}</strong><small>{tx('11/10 18:00〜19:00 · -1', 'Nov 10, 18:00–19:00 · -1')}</small></span><ChevronRight size={17} /></div>
-      </div>
-      <button className="preview-button" onClick={() => openModal({ type: 'shiftPreview' })}><Smartphone size={18} /><span><strong>{tx('スタッフ表示をプレビュー', 'Preview staff view')}</strong><small>{tx('公開後の見え方を確認', 'See what the team will see')}</small></span><ChevronRight size={18} /></button>
-      <section className="publish-notice"><BellRing size={19} /><p><strong>{tx('公開すると通知されます', 'Publishing sends a notification')}</strong><br />{tx('スタッフ全員に最新のシフトをお知らせします。', 'Everyone will receive the latest schedule.')}</p></section>
-      <button className="primary-button publish-button" onClick={() => setPublished(true)}><Send size={18} />{tx('シフトを公開する', 'Publish schedule')}</button>
-      <button className="link-button" onClick={() => navigate('builder')}>{tx('下書きに戻る', 'Return to draft')}</button>
-    </div>
-  );
+  return <div className="screen screen--wide"><PageTitle title={tx('シフト作成', 'Build schedule')} subtitle={tx('11月10日〜13日 · 下書き', 'Nov 10–13 · Draft')} onBack={() => navigate('home')} /><ScheduleTimeline locale={locale} staff={staff} days={shiftDays} setDays={setShiftDays} onReview={() => navigate('publish')} /></div>;
 }
 
-function MySchedule({ locale, navigate }: SharedProps) {
+function PublishScreen({ locale, navigate, published, setPublished, openModal }: Pick<ScreenProps, 'locale' | 'navigate' | 'published' | 'setPublished' | 'openModal'>) {
   const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const dates = [['12', true], ['13', false], ['14', false], ['15', true], ['16', false], ['17', false], ['18', true]] as const;
-  return (
-    <div className="screen schedule-screen">
-      <PageTitle title={tx('マイシフト', 'My schedule')} subtitle={tx('2026年10月', 'October 2026')} />
-      <div className="week-calendar">{dates.map(([day, hasShift], index) => <span key={day} className={index === 0 ? 'today' : ''}><small>{locale === 'ja' ? ['月','火','水','木','金','土','日'][index] : ['M','T','W','T','F','S','S'][index]}</small><strong>{day}</strong>{hasShift && <i />}</span>)}</div>
-      <div className="month-summary"><span><CalendarCheck2 size={18} /><b>8</b><small>{tx('勤務日', 'shifts')}</small></span><span><Clock3 size={18} /><b>38h</b><small>{tx('予定時間', 'scheduled')}</small></span></div>
-      <SectionHead title={tx('今後の勤務', 'Upcoming')} />
-      <div className="shift-list">
-        {[[tx('今日', 'Today'),'10/12','18:00 — 23:00',tx('ホール', 'Floor')],[tx('木曜日', 'Thursday'),'10/15','18:00 — 22:00',tx('ホール', 'Floor')],[tx('日曜日', 'Sunday'),'10/18','12:00 — 18:00',tx('キッチン', 'Kitchen')]].map(([label,date,time,area], index) => <button key={date} className={index === 0 ? 'featured' : ''} onClick={() => index === 0 && navigate('attendance')}><span className="shift-date"><small>{label}</small><strong>{date}</strong></span><span className="shift-detail"><strong>{time}</strong><small><MapPin size={13} />{stores[locale][0]} · {area}</small></span><ChevronRight size={17} /></button>)}
-      </div>
-    </div>
-  );
+  return <div className="screen"><PageTitle title={tx('公開前の確認', 'Review & publish')} onBack={() => navigate('builder')} /><section className="publish-summary"><span className="success-orb"><CalendarCheck2 /></span><h3>{published ? tx('公開済みです', 'Schedule published') : tx('11月10日〜13日のシフト', 'Nov 10–13 schedule')}</h3><p>{tx('確定 8件 · 未確定 6件 · 希望なし 10件', '8 confirmed · 6 unconfirmed · 10 unavailable')}</p></section><button className="summary-row" onClick={() => openModal({ type: 'shiftPreview' })}><span><strong>{tx('スタッフ表示をプレビュー', 'Preview staff view')}</strong><small>{tx('通知前に見え方を確認', 'Review before notifying')}</small></span><ChevronRight /></button><div className="warning-card"><AlertTriangle /><p>{tx('未確定の行は公開されません。公開後も変更できます。', 'Unconfirmed rows will not be published. You can edit later.')}</p></div><button className="primary-button full-button" disabled={published} onClick={() => openModal({ type: 'confirm', title: tx('シフトを公開しますか？', 'Publish this schedule?'), body: tx('対象スタッフへ確定シフトを通知します。', 'Confirmed shifts will be sent to the team.'), onConfirm: () => { setPublished(true); navigate('home'); } })}>{published ? tx('公開済み', 'Published') : tx('シフトを公開', 'Publish schedule')}</button></div>;
 }
 
-function AttendanceScreen({ locale, attendance, setAttendance, navigate }: SharedProps & Pick<ScreenProps, 'attendance' | 'setAttendance'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const config = {
-    before: { eyebrow: tx('まもなく勤務です', 'SHIFT STARTING SOON'), title: tx('本日の勤務', 'Today’s shift'), time: '17:58', sub: '18:00 — 23:00' },
-    working: { eyebrow: tx('勤務中', 'CLOCKED IN'), title: tx('おつかれさまです', 'You’re on the clock'), time: '01:24', sub: tx('勤務時間', 'Time worked') },
-    break: { eyebrow: tx('休憩中', 'ON BREAK'), title: tx('ゆっくり休んでください', 'Enjoy your break'), time: '00:18', sub: tx('12:03から', 'Since 12:03') },
-    complete: { eyebrow: tx('勤務完了', 'SHIFT COMPLETE'), title: tx('今日もおつかれさまでした', 'Great work today'), time: '4:32', sub: tx('実勤務時間', 'Time worked') },
-  }[attendance];
-  return (
-    <div className={`screen attendance-screen attendance-screen--${attendance}`}>
-      <PageTitle title={tx('勤怠', 'Time clock')} subtitle={stores[locale][0]} />
-      <section className="clock-panel">
-        <span className="clock-state"><i />{config.eyebrow}</span>
-        <h3>{config.title}</h3>
-        <div className="time-orb"><span>{config.sub}</span><strong>{config.time}</strong>{attendance === 'before' && <small>JST</small>}</div>
-        {attendance === 'before' && <div className="scheduled-shift"><CalendarDays size={17} /><span><small>{tx('予定', 'SCHEDULED')}</small><strong>{config.sub}</strong></span></div>}
-        {attendance === 'working' && <div className="clocked-at"><span><small>{tx('出勤', 'CLOCKED IN')}</small><strong>18:02</strong></span><span><small>{tx('予定退勤', 'ENDS AT')}</small><strong>23:00</strong></span></div>}
-        {attendance === 'break' && <p className="break-note">{tx('休憩時間は勤務時間から自動で差し引かれます。', 'Break time is automatically excluded from worked time.')}</p>}
-        {attendance === 'complete' && <div className="completed-detail"><span><small>{tx('出退勤', 'SHIFT')}</small><strong>18:02 — 23:04</strong></span><span><small>{tx('休憩', 'BREAK')}</small><strong>30 min</strong></span></div>}
-      </section>
-      {attendance === 'before' && <button className="clock-action" onClick={() => setAttendance('working')}><span className="clock-action-icon"><Clock3 size={24} /></span><span><strong>{tx('出勤する', 'Clock in')}</strong><small>{tx('タップして勤務を開始', 'Tap to start your shift')}</small></span></button>}
-      {attendance === 'working' && <div className="clock-actions"><button onClick={() => setAttendance('break')}><Coffee size={21} /><span><strong>{tx('休憩開始', 'Start break')}</strong><small>{tx('一時停止', 'Pause timer')}</small></span></button><button className="danger-action" onClick={() => setAttendance('complete')}><CheckCircle2 size={21} /><span><strong>{tx('退勤する', 'Clock out')}</strong><small>{tx('勤務を終了', 'End shift')}</small></span></button></div>}
-      {attendance === 'break' && <button className="clock-action break-end" onClick={() => setAttendance('working')}><span className="clock-action-icon"><TimerReset size={24} /></span><span><strong>{tx('休憩を終了', 'End break')}</strong><small>{tx('勤務を再開します', 'Resume your shift')}</small></span></button>}
-      {attendance === 'complete' && <><div className="completion-check"><BadgeCheck size={19} />{tx('勤務記録を保存しました', 'Timesheet saved')}</div><button className="wide-ghost-button" onClick={() => navigate('payroll')}><ReceiptText size={17} />{tx('勤怠履歴・給与概算を見る', 'View history & pay estimate')}</button></>}
-      <div className="location-assurance"><LocateFixed size={16} /><span><strong>{tx('位置情報は共有されていません', 'Location sharing is off')}</strong><small>{tx('共有は「その他」から自分で開始できます', 'Only you can turn it on from More')}</small></span></div>
-    </div>
-  );
+function MemberSchedule({ locale, navigate }: SharedProps) { const tx = (ja: string, en: string) => translate(locale, ja, en); const [month,setMonth]=useState(11); return <div className="screen"><PageTitle title={tx('マイシフト', 'My schedule')} /><div className="month-switch"><button onClick={() => setMonth((value)=>value===1?12:value-1)}>‹</button><strong>{locale==='ja'?`2026年${month}月`:new Date(2026,month-1,1).toLocaleString('en',{month:'long',year:'numeric'})}</strong><button onClick={() => setMonth((value)=>value===12?1:value+1)}>›</button></div>{month===11?<div className="schedule-list">{[['10','火','10:00 — 18:00'],['12','木','18:00 — 23:30'],['16','月','09:00 — 17:00'],['20','金','12:00 — 20:00']].map((item, index) => <button key={item[0]} onClick={() => navigate(index === 0 ? 'attendanceDetail' : 'attendance')}><span><strong>{item[0]}</strong><small>{item[1]}</small></span><div><strong>{item[2]}</strong><small>{tx('確定 · 渋谷店', 'Confirmed · Shibuya')}</small></div><ChevronRight /></button>)}</div>:<div className="quiet-empty"><CalendarDays/><p>{tx('この月の確定シフトはありません。','No confirmed shifts this month.')}</p></div>}</div>; }
+
+function AttendanceScreen({ locale, attendance, setAttendance, navigate, openModal }: Pick<ScreenProps, 'locale' | 'attendance' | 'setAttendance' | 'navigate' | 'openModal'>) {
+  const tx = (ja: string, en: string) => translate(locale, ja, en); const labels = { before: tx('出勤する', 'Clock in'), working: tx('休憩を開始', 'Start break'), break: tx('休憩を終了', 'End break'), complete: tx('勤務完了', 'Shift complete') }; const next = () => { if (attendance === 'before') setAttendance('working'); else if (attendance === 'working') setAttendance('break'); else if (attendance === 'break') setAttendance('working'); };
+  return <div className="screen attendance-screen"><PageTitle title={tx('勤怠', 'Attendance')} /><div className="clock-card"><small>{tx('11月10日（火）', 'Tuesday, Nov 10')}</small><strong>09:41</strong><p>{tx('予定 10:00 — 18:00', 'Scheduled 10:00–18:00')}</p><span className={`attendance-state state-${attendance}`}>{labels[attendance]}</span></div>{attendance !== 'complete' && <button className="clock-button" onClick={next}><Clock3 />{labels[attendance]}</button>}{attendance === 'working' && <button className="secondary-button full-button" onClick={() => openModal({ type: 'confirm', title: tx('退勤しますか？', 'Clock out?'), body: tx('本日の勤怠を確定します。', 'This will complete today’s attendance.'), onConfirm: () => setAttendance('complete') })}>{tx('退勤する', 'Clock out')}</button>}<div className="attendance-timeline"><div className={attendance !== 'before' ? 'done' : ''}><i /><span><strong>{tx('出勤', 'Clock in')}</strong><small>{attendance !== 'before' ? '10:02' : '—'}</small></span></div><div className={attendance === 'break' || attendance === 'complete' ? 'done' : ''}><i /><span><strong>{tx('休憩', 'Break')}</strong><small>{attendance === 'break' || attendance === 'complete' ? '13:06' : '—'}</small></span></div><div className={attendance === 'complete' ? 'done' : ''}><i /><span><strong>{tx('退勤', 'Clock out')}</strong><small>{attendance === 'complete' ? '18:04' : '—'}</small></span></div></div><button className="summary-row" onClick={() => navigate('attendanceHistory')}><span><strong>{tx('勤怠履歴', 'Attendance history')}</strong><small>{tx('過去の記録と修正申請', 'Records and correction requests')}</small></span><ChevronRight /></button></div>;
 }
 
-function TeamAttendance({ locale, navigate }: SharedProps) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const rows = [[tx('田中 太郎', 'Taro Tanaka'), tx('勤務中', 'Working'), '18:02〜', 'green'],[tx('山田 花子', 'Hana Yamada'), tx('休憩中', 'On break'), '12:03〜', 'orange'],[tx('鈴木 一郎', 'Ichiro Suzuki'), tx('退勤済', 'Done'), '09:58–17:01', 'purple'],[tx('佐藤 美咲', 'Misaki Sato'), tx('未出勤', 'Not in'), '18:00予定', 'gray']] as const;
-  return (
-    <div className="screen team-attendance-screen">
-      <PageTitle title={tx('今日の勤怠', 'Today’s attendance')} subtitle={`${stores[locale][0]} · ${tx('10月12日', 'October 12')}`} action={<button className="icon-chip" onClick={() => navigate('gps')}><MapPinned size={18} /></button>} />
-      <div className="attendance-stats"><span className="active"><strong>4</strong><small>{tx('勤務中', 'Working')}</small></span><span><strong>1</strong><small>{tx('休憩中', 'Break')}</small></span><span><strong>3</strong><small>{tx('退勤済', 'Done')}</small></span><span><strong>2</strong><small>{tx('未出勤', 'Not in')}</small></span></div>
-      <div className="request-banner"><span><FilePenLine size={18} /></span><div><strong>{tx('修正申請が1件あります', '1 correction request')}</strong><small>{tx('確認して承認してください', 'Review and approve')}</small></div><ChevronRight size={17} /></div>
-      <SectionHead title={tx('スタッフ', 'Staff on today')} action={tx('10人', '10 people')} />
-      <div className="attendance-people">
-        {rows.map(([name,status,time,tone], index) => <button key={name}><div className="avatar-with-status"><Avatar name={name} color={people[index]?.color} small /><i className={`presence presence--${tone}`} /></div><span><strong>{name}</strong><small>{time}</small></span><StatusPill tone={tone === 'green' ? 'mint' : tone === 'orange' ? 'orange' : tone === 'purple' ? 'purple' : 'gray'}>{status}</StatusPill></button>)}
-      </div>
-      <button className="wide-ghost-button" onClick={() => navigate('kiosk')}><Smartphone size={17} />{tx('共用端末モードを確認', 'Preview kiosk mode')}</button>
-    </div>
-  );
-}
+function TeamAttendance({ locale, navigate, staff, setSelectedStaffId }: Pick<ScreenProps, 'locale' | 'navigate' | 'staff' | 'setSelectedStaffId'>) { const tx = (ja: string, en: string) => translate(locale, ja, en); return <div className="screen"><PageTitle title={tx('今日の勤怠', 'Today’s attendance')} subtitle={tx('11月10日（火）', 'Tuesday, Nov 10')} /><button className="request-banner" onClick={() => navigate('correctionReview')}><FilePenLine /><span><strong>{tx('修正申請 1件', '1 correction request')}</strong><small>{tx('確認が必要です', 'Needs review')}</small></span><ChevronRight /></button><div className="attendance-stats"><span><strong>4</strong><small>{tx('勤務中', 'Working')}</small></span><span><strong>1</strong><small>{tx('休憩中', 'On break')}</small></span><span><strong>2</strong><small>{tx('未出勤', 'Not in')}</small></span></div><div className="list-card">{staff.map((person, index) => <button className="person-row person-row--button" key={person.id} onClick={() => { setSelectedStaffId(person.id); navigate('attendanceDetail'); }}><Avatar name={person[locale]} color={person.color} small /><span><strong>{person[locale]}</strong><small>{index < 3 ? `10:0${index + 1} —` : tx('予定 12:00', 'Scheduled 12:00')}</small></span><StatusPill tone={index < 3 ? 'mint' : index === 3 ? 'orange' : 'gray'}>{index < 3 ? tx('勤務中', 'Working') : index === 3 ? tx('休憩', 'Break') : tx('未出勤', 'Not in')}</StatusPill></button>)}</div><button className="secondary-button full-button" onClick={() => navigate('attendanceHistory')}>{tx('勤怠履歴を見る', 'View attendance history')}</button></div>; }
 
-function OpenShifts({ locale, role, applied, setApplied, hired, setHired, navigate, openModal }: SharedProps & Pick<ScreenProps, 'role' | 'applied' | 'setApplied' | 'hired' | 'setHired' | 'openModal'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const isMember = role === 'MEMBER';
-  if (!isMember) return (
-    <div className="screen">
-      <PageTitle title={tx('欠員募集', 'Open shift')} subtitle={tx('応募状況', 'Applications')} onBack={() => navigate('home')} />
-      <section className="vacancy-header"><div><StatusPill tone={hired ? 'mint' : 'red'}>{hired ? tx('募集完了', 'FILLED') : tx('急募', 'URGENT')}</StatusPill><h3>{tx('10月20日（月）', 'Monday, October 20')}</h3><strong>18:00 — 22:00</strong><p><MapPin size={15} />{stores[locale][0]} · {tx('ホール', 'Floor')}</p></div><span><small>{tx('募集', 'NEEDED')}</small><strong>{hired ? 0 : 1}</strong><em>{tx('人', 'person')}</em></span></section>
-      <SectionHead title={tx('応募したスタッフ', 'Applicants')} action={hired ? tx('採用済み', 'Filled') : tx('3人', '3 people')} />
-      <div className="applicant-list">
-        {[tx('田中 太郎', 'Taro Tanaka'),tx('山田 花子', 'Hana Yamada'),tx('鈴木 一郎', 'Ichiro Suzuki')].map((name,index) => <div key={name}><Avatar name={name} color={people[index].color} small /><span><strong>{name}</strong><small>{tx('応募済み · 2時間前', 'Applied · 2h ago')}</small></span>{hired && index === 0 ? <StatusPill tone="mint">{tx('採用', 'HIRED')}</StatusPill> : <button disabled={hired} onClick={() => { setHired(true); openModal({ type: 'success', title: tx('採用しました', 'Shift filled'), body: tx(`${name}さんのシフトに追加しました。`, `${name} was added to the schedule.`) }); }}>{tx('採用', 'Hire')}</button>}</div>)}
-      </div>
-      {hired && <div className="filled-banner"><CheckCircle2 size={20} /><span><strong>{tx('募集完了', 'Position filled')}</strong><small>{tx('田中 太郎さんを採用しました', 'Taro Tanaka was selected')}</small></span></div>}
-    </div>
-  );
-  return (
-    <div className="screen open-shifts-screen">
-      <PageTitle title={tx('募集中のシフト', 'Open shifts')} subtitle={tx('あなたに合う勤務を見つける', 'Pick up an extra shift')} />
-      {hired ? <section className="hired-celebration"><span>🎉</span><small>{tx('採用されました', 'YOU’RE IN')}</small><h2>{tx('シフトに追加されました', 'Added to your schedule')}</h2><p>{tx('10月20日 18:00〜22:00 · 渋谷店', 'Oct 20, 18:00–22:00 · Shibuya')}</p><button className="white-button" onClick={() => navigate('schedule')}>{tx('マイシフトで確認', 'View my schedule')}<ArrowRight size={17} /></button></section> : <><section className="open-shift-card"><div className="open-shift-banner"><StatusPill tone="red">{tx('急募', 'URGENT')}</StatusPill><span>{tx('あと1名', '1 SPOT LEFT')}</span></div><div className="open-date"><span><small>OCT</small><strong>20</strong></span><div><small>{tx('月曜日', 'MONDAY')}</small><h3>18:00 — 22:00</h3><p><MapPin size={15} />{stores[locale][0]} · {tx('ホール', 'Floor')}</p></div></div><div className="shift-perks"><span><Clock3 size={16} />4h</span><span><CircleDollarSign size={16} />¥5,200</span><span><UsersRound size={16} />{tx('3人と勤務', 'with 3 others')}</span></div><button className={applied ? 'cancel-application' : 'primary-button'} onClick={() => setApplied((current) => !current)}>{applied ? <><Check size={17} />{tx('応募済み · 取り消す', 'Applied · Cancel')}</> : <>{tx('勤務できます', 'I can work')}<ArrowRight size={17} /></>}</button></section>{applied && <div className="application-note"><CheckCircle2 size={18} /><span><strong>{tx('応募しました', 'Application sent')}</strong><small>{tx('管理者が確認すると通知されます', 'You’ll be notified when a manager responds')}</small></span></div>}</>}
-      <SectionHead title={tx('今後の募集', 'More opportunities')} />
-      <div className="quiet-empty"><BriefcaseBusiness size={25} /><p>{tx('ほかに募集中のシフトはありません。', 'There are no other open shifts right now.')}</p></div>
-    </div>
-  );
-}
+function AttendanceHistory({ locale, navigate, role }: Pick<ScreenProps, 'locale' | 'navigate' | 'role'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const [month,setMonth]=useState(11); const rows=[['11/10','10:02 — 18:04','7h02m'],['11/08','09:58 — 17:03','6h05m'],['11/05','12:01 — 20:05','7h04m']]; return <div className="screen"><PageTitle title={tx('勤怠履歴','Attendance history')} onBack={()=>navigate(role==='ADMIN'?'teamAttendance':'settings')} /><div className="month-switch"><button onClick={()=>setMonth((value)=>value===1?12:value-1)}>‹</button><strong>{locale==='ja'?`2026年${month}月`:new Date(2026,month-1,1).toLocaleString('en',{month:'long',year:'numeric'})}</strong><button onClick={()=>setMonth((value)=>value===12?1:value+1)}>›</button></div><div className="summary-card"><span>{tx('合計勤務','Total hours')}</span><strong>{month===11?'20h 11m':'0h 00m'}</strong><small>{month===11?tx('給与概算 ¥27,240','Estimated pay ¥27,240'):tx('記録なし','No records')}</small></div>{month===11?<div className="list-card">{rows.map((row)=><button className="history-row" key={row[0]} onClick={()=>navigate('attendanceDetail')}><div><strong>{row[0]}</strong><small>{tx('渋谷店','Shibuya')}</small></div><span><strong>{row[1]}</strong><small>{row[2]}</small></span><ChevronRight /></button>)}</div>:<div className="quiet-empty"><ReceiptText/><p>{tx('この月の勤怠記録はありません。','No attendance records this month.')}</p></div>}<button className="secondary-button full-button" onClick={()=>navigate('payroll')}>{tx('給与概算を見る','View pay estimate')}</button></div>; }
 
-function GpsScreen({ locale, role, gpsSharing, setGpsSharing, navigate }: SharedProps & Pick<ScreenProps, 'role' | 'gpsSharing' | 'setGpsSharing'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  if (role !== 'MEMBER') return (
-    <div className="screen gps-admin-screen">
-      <PageTitle title={tx('位置情報', 'Live locations')} subtitle={tx('勤務中・共有中のみ', 'Only staff who opted in')} onBack={() => navigate('teamAttendance')} />
-      <div className="mock-map">
-        <span className="map-road road-a" /><span className="map-road road-b" /><span className="map-road road-c" /><span className="map-block block-a" /><span className="map-block block-b" /><span className="map-label label-a">Hachikō</span><span className="map-label label-b">Miyashita</span>
-        <span className="map-store"><Store size={16} /></span>
-        <span className="staff-pin pin-a"><Avatar name={tx('田中', 'Taro')} color="#2c7b73" small /><em>{tx('田中', 'Taro')}</em></span>
-        <span className="staff-pin pin-b"><Avatar name={tx('山田', 'Hana')} color="#ef8c62" small /><em>{tx('山田', 'Hana')}</em></span>
-        <span className="map-privacy"><ShieldCheck size={13} />{tx('本人が共有中', 'Opted in')}</span>
-      </div>
-      <SectionHead title={tx('共有中 2人', 'Sharing · 2')} action={tx('更新', 'Refresh')} />
-      <div className="location-list"><div><Avatar name={tx('田中 太郎', 'Taro Tanaka')} small /><span><strong>{tx('田中 太郎', 'Taro Tanaka')}</strong><small>{tx('最終更新 1分前', 'Updated 1 min ago')}</small></span><i /></div><div><Avatar name={tx('山田 花子', 'Hana Yamada')} color="#ef8c62" small /><span><strong>{tx('山田 花子', 'Hana Yamada')}</strong><small>{tx('最終更新 3分前', 'Updated 3 min ago')}</small></span><i /></div></div>
-      <p className="privacy-footnote"><LockKeyhole size={15} />{tx('共有をONにした勤務中スタッフだけが表示されます。管理者から開始することはできません。', 'Only clocked-in staff who choose to share appear here. Managers cannot turn sharing on.')}</p>
-    </div>
-  );
-  return (
-    <div className="screen gps-member-screen">
-      <PageTitle title={tx('位置情報共有', 'Location sharing')} subtitle={tx('勤務中のみ利用できます', 'Available while clocked in')} onBack={() => navigate('settings')} />
-      <section className={gpsSharing ? 'gps-control is-on' : 'gps-control'}>
-        <div className="gps-orb"><Navigation size={34} /></div>
-        <span className="gps-state"><i />{gpsSharing ? tx('位置情報共有中', 'SHARING LOCATION') : tx('現在 OFF', 'CURRENTLY OFF')}</span>
-        <h3>{gpsSharing ? tx('渋谷店の管理者へ共有中', 'Sharing with Shibuya managers') : tx('共有するかは、あなた次第', 'You’re always in control')}</h3>
-        <p>{gpsSharing ? tx('退勤すると位置共有は自動で停止します。', 'Sharing will stop automatically when you clock out.') : tx('位置情報はあなたがONにした時だけ、勤務先の管理者に共有されます。', 'Your location is shared with store managers only when you turn it on.')}</p>
-        <button className={gpsSharing ? 'stop-sharing' : 'primary-button'} onClick={() => setGpsSharing((current) => !current)}>{gpsSharing ? tx('共有を停止', 'Stop sharing') : tx('位置共有を開始', 'Start sharing')}</button>
-      </section>
-      <div className="privacy-points"><div><UserPlus size={18} /><span><strong>{tx('自分で開始', 'You opt in')}</strong><small>{tx('管理者は勝手に開始できません', 'Managers cannot start it')}</small></span></div><div><ShieldCheck size={18} /><span><strong>{tx('管理者だけ閲覧', 'Managers only')}</strong><small>{tx('他のスタッフには表示されません', 'Never visible to coworkers')}</small></span></div><div><Clock3 size={18} /><span><strong>{tx('退勤で自動停止', 'Stops at clock-out')}</strong><small>{tx('勤務外は共有されません', 'Never shared off shift')}</small></span></div></div>
-    </div>
-  );
-}
+function AttendanceDetail({ locale, navigate, role, staff, selectedStaffId }: Pick<ScreenProps,'locale'|'navigate'|'role'|'staff'|'selectedStaffId'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const person=staff.find((item)=>item.id===selectedStaffId); return <div className="screen"><PageTitle title={tx('勤怠詳細','Attendance detail')} subtitle={role==='ADMIN'&&person?person[locale]:undefined} onBack={()=>navigate('attendanceHistory')} /><div className="detail-hero"><Clock3/><h3>{tx('11月10日（火）','Tuesday, Nov 10')}</h3><strong>7h 02m</strong><p>10:02 — 18:04 · {tx('休憩 1h','1h break')}</p></div><dl className="detail-list"><div><dt>{tx('予定','Scheduled')}</dt><dd>10:00 — 18:00</dd></div><div><dt>{tx('実績','Actual')}</dt><dd>10:02 — 18:04</dd></div><div><dt>{tx('勤務場所','Location')}</dt><dd>{tx('渋谷店','Shibuya')}</dd></div></dl><button className="primary-button full-button" onClick={()=>navigate(role==='ADMIN'?'correctionReview':'correction')}>{role==='ADMIN'?tx('修正申請を確認','Review correction'):tx('修正を申請','Request correction')}</button></div>; }
 
-function StaffScreen({ locale, navigate }: SharedProps) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return (
-    <div className="screen staff-screen">
-      <PageTitle title={tx('スタッフ', 'Staff')} subtitle={tx('12人 · 3店舗', '12 people · 3 stores')} action={<button className="add-round" onClick={() => navigate('staffDetail')}><Plus size={19} /></button>} />
-      <div className="search-faux">⌕ <span>{tx('名前で検索', 'Search by name')}</span></div>
-      <div className="filter-chips"><button className="active">{tx('すべて', 'All')} · 12</button><button>OWNER · 1</button><button>MANAGER · 2</button><button>MEMBER · 9</button></div>
-      <div className="staff-list">
-        {people.map((person) => <button key={person.ja} onClick={() => navigate('staffDetail')}><Avatar name={person[locale]} color={person.color} /><span><strong>{person[locale]}</strong><small>{stores[locale][person.store]} · {person.role}</small></span><span className="active-label"><i />{tx('在籍', 'Active')}</span><ChevronRight size={17} /></button>)}
-      </div>
-      <button className="primary-button"><UserPlus size={18} />{tx('スタッフを追加', 'Add staff member')}</button>
-    </div>
-  );
-}
+function CorrectionScreen({ locale, navigate, openModal }: Pick<ScreenProps,'locale'|'navigate'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const [start,setStart]=useState('10:00'); const [end,setEnd]=useState('18:00'); const [reason,setReason]=useState(''); return <div className="screen"><PageTitle title={tx('勤怠修正申請','Attendance correction')} onBack={()=>navigate('attendanceDetail')} /><form className="mock-form" onSubmit={(event)=>{event.preventDefault();openModal({type:'success',title:tx('申請しました','Request submitted'),body:tx('管理者の確認をお待ちください。','An admin will review your request.')});navigate('attendanceHistory');}}><div className="split-fields"><label><span>{tx('出勤','Clock in')}</span><input type="time" value={start} onChange={(event)=>setStart(event.target.value)}/></label><label><span>{tx('退勤','Clock out')}</span><input type="time" value={end} onChange={(event)=>setEnd(event.target.value)}/></label></div><label><span>{tx('修正理由','Reason')}</span><textarea required value={reason} onChange={(event)=>setReason(event.target.value)} placeholder={tx('例：打刻を忘れたため','e.g. Forgot to clock out')}/></label><button className="primary-button" type="submit">{tx('申請を送信','Send request')}</button></form></div>; }
 
-function StaffDetail({ locale, navigate }: SharedProps) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return (
-    <div className="screen detail-screen">
-      <PageTitle title={tx('スタッフ詳細', 'Staff details')} onBack={() => navigate('staff')} action={<button className="text-button">{tx('編集', 'Edit')}</button>} />
-      <div className="profile-hero"><Avatar name={tx('田中 太郎', 'Taro Tanaka')} /><h3>{tx('田中 太郎', 'Taro Tanaka')}</h3><p>MEMBER · {stores[locale][0]}</p><StatusPill tone="mint">{tx('在籍中', 'ACTIVE')}</StatusPill></div>
-      <div className="detail-card"><label>{tx('時給', 'Hourly rate')}<strong>¥1,300</strong></label><label>{tx('電話番号', 'Phone')}<strong>090-1234-5678</strong></label><label>{tx('勤務開始日', 'Started')}<strong>2025 / 04 / 01</strong></label><label>{tx('スタッフPIN', 'Staff PIN')}<strong>••••</strong></label></div>
-      <div className="detail-actions"><button><CalendarDays size={18} />{tx('シフトを見る', 'View schedule')}<ChevronRight size={17} /></button><button><Clock3 size={18} />{tx('勤怠履歴を見る', 'View attendance')}<ChevronRight size={17} /></button><button><WalletCards size={18} />{tx('給与概算を見る', 'View pay estimate')}<ChevronRight size={17} /></button></div>
-    </div>
-  );
-}
+function CorrectionReview({ locale, navigate, status, setStatus, openModal }: Pick<ScreenProps,'locale'|'navigate'|'correctionStatus'|'setCorrectionStatus'|'openModal'> & {status: ScreenProps['correctionStatus'];setStatus:ScreenProps['setCorrectionStatus']}) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const act=(next:'approved'|'rejected')=>{setStatus(next);openModal({type:'success',title:next==='approved'?tx('承認しました','Approved'):tx('差し戻しました','Rejected'),body:tx('申請者へ結果を通知しました。','The member was notified.')});}; return <div className="screen"><PageTitle title={tx('修正申請の確認','Review correction')} onBack={()=>navigate('teamAttendance')} /><div className="request-card"><div className="person-row"><Avatar name={locale==='ja'?'田中 太郎':'Taro Tanaka'} small/><span><strong>{locale==='ja'?'田中 太郎':'Taro Tanaka'}</strong><small>{tx('11月8日の勤怠','Attendance on Nov 8')}</small></span><StatusPill tone={status==='pending'?'orange':status==='approved'?'mint':'red'}>{status==='pending'?tx('確認待ち','Pending'):status==='approved'?tx('承認済み','Approved'):tx('差し戻し','Rejected')}</StatusPill></div><div className="correction-diff"><span><small>{tx('修正前','Before')}</small><strong>09:58 — 16:03</strong></span><ArrowRight/><span><small>{tx('申請内容','Requested')}</small><strong>09:58 — 17:03</strong></span></div><p>{tx('退勤の打刻が1時間早く記録されていたため。','The clock-out time was recorded one hour early.')}</p></div>{status==='pending'&&<div className="dual-actions"><button className="secondary-button danger-button" onClick={()=>act('rejected')}>{tx('差し戻す','Reject')}</button><button className="primary-button" onClick={()=>act('approved')}>{tx('承認する','Approve')}</button></div>}</div>; }
 
-function StoresScreen({ locale, navigate }: SharedProps) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return <div className="screen stores-screen"><PageTitle title={tx('店舗', 'Stores')} subtitle={tx('3店舗 · 26人', '3 stores · 26 people')} onBack={() => navigate('settings')} /><div className="store-list">{stores[locale].map((store,index) => <button key={store}><span className={`store-illustration store-illustration--${index}`}><Store size={23} /></span><span><strong>{store}</strong><small>{[12,8,6][index]} {tx('人 · Asia/Tokyo', 'staff · Asia/Tokyo')}</small></span><ChevronRight size={18} /></button>)}</div><button className="primary-button"><Plus size={18} />{tx('店舗を追加', 'Add a store')}</button></div>;
-}
+function StaffScreen({ locale, navigate, staff, setSelectedStaffId, setEditingStaffId }: Pick<ScreenProps,'locale'|'navigate'|'staff'|'setSelectedStaffId'|'setEditingStaffId'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const [query,setQuery]=useState(''); const [filter,setFilter]=useState<'all'|'active'|'inactive'>('all'); const shown=staff.filter((person)=>(filter==='all'||(filter==='active'?person.active:!person.active))&&person[locale].toLowerCase().includes(query.toLowerCase())); return <div className="screen"><PageTitle title={tx('スタッフ管理','Staff management')} subtitle={`${staff.filter((person)=>person.active).length} ${tx('人が在籍','active members')}`} action={<button className="round-add" onClick={()=>{setEditingStaffId(null);navigate('staffForm');}} aria-label={tx('スタッフ追加','Add staff')}><Plus/></button>} /><label className="search-box"><Search/><input value={query} onChange={(event)=>setQuery(event.target.value)} placeholder={tx('名前で検索','Search by name')}/></label><div className="filter-tabs">{(['all','active','inactive'] as const).map((item)=><button key={item} className={filter===item?'active':''} onClick={()=>setFilter(item)}>{item==='all'?tx('すべて','All'):item==='active'?tx('在籍','Active'):tx('退職','Inactive')}</button>)}</div><div className="list-card">{shown.map((person)=><button className="person-row person-row--button" key={person.id} onClick={()=>{setSelectedStaffId(person.id);navigate('staffDetail');}}><Avatar name={person[locale]} color={person.color} small/><span><strong>{person[locale]}</strong><small>{person.role==='ADMIN'?tx('管理者','Admin'):tx('メンバー','Member')} · ¥{person.hourlyRate.toLocaleString()}/h</small></span><StatusPill tone={person.active?'mint':'gray'}>{person.active?tx('在籍','Active'):tx('退職','Inactive')}</StatusPill></button>)}</div></div>; }
 
-function SubscriptionScreen({ locale, scenario, navigate }: SharedProps & Pick<ScreenProps, 'scenario'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const trial = scenario === 'trial';
-  const paid = scenario === 'paid';
-  return (
-    <div className="screen subscription-screen">
-      <PageTitle title={tx('プラン', 'Subscription')} subtitle="Crewami Plan" onBack={() => navigate('settings')} />
-      {(trial || paid) && <section className="current-plan"><span className="plan-crown"><Crown size={22} /></span><small>{paid ? tx('現在のプラン', 'CURRENT PLAN') : tx('無料体験中', 'FREE TRIAL')}</small><h3>Crewami Standard</h3>{trial ? <div className="trial-days"><strong>23</strong><span>{tx('日', 'days')}<small>{tx('残り', 'remaining')}</small></span></div> : <StatusPill tone="mint">{tx('課金済み', 'ACTIVE')}</StatusPill>}<div className="seat-meter"><span><small>{tx('ユーザー', 'SEATS')}</small><strong>18 / 30</strong></span><i><b style={{ width: '60%' }} /></i></div></section>}
-      {!trial && !paid && <section className="plan-intro"><span><Gift size={21} /></span><div><small>{tx('はじめの1か月', 'YOUR FIRST MONTH')}</small><h3>{tx('無料で、すべて試せます', 'Try everything free')}</h3><p>{tx('チームに合うかじっくり確認できます。', 'See how Crewami fits your team.')}</p></div></section>}
-      {scenario === 'unpaid' && <section className="seat-limit-card"><AlertTriangle size={20} /><div><small>{tx('ユーザー上限', 'SEAT LIMIT')}</small><h3>30 / 30 users</h3><p>{tx('新しいスタッフを追加するには、プランを変更してください。', 'Change your plan to add another staff member.')}</p></div></section>}
-      <SectionHead title={tx('プランを選ぶ', 'Choose a plan')} />
-      <div className="plan-list"><button><span><small>SMALL</small><strong>10 users</strong></span><em>¥2,980<small>/mo</small></em></button><button className="recommended"><span className="recommend-label">{tx('おすすめ', 'RECOMMENDED')}</span><span><small>STANDARD</small><strong>30 users</strong></span><em>¥5,980<small>/mo</small></em><CheckCircle2 size={19} /></button><button><span><small>PRO</small><strong>100 users</strong></span><em>¥12,800<small>/mo</small></em></button></div>
-      {!paid && <button className="primary-button"><CreditCard size={18} />{trial ? tx('Standardを続ける', 'Continue with Standard') : tx('1か月無料で始める', 'Start 1 month free')}</button>}
-      <p className="prototype-price-note">{tx('※ 価格はUI確認用の仮設定です。', 'Prototype pricing shown for UI evaluation only.')}</p>
-    </div>
-  );
-}
+function StaffDetail({ locale, navigate, staff, setStaff, selectedStaffId, setEditingStaffId, openModal }: Pick<ScreenProps,'locale'|'navigate'|'staff'|'setStaff'|'selectedStaffId'|'setEditingStaffId'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const person=staff.find((item)=>item.id===selectedStaffId)??staff[0]; const toggle=()=>setStaff((items)=>items.map((item)=>item.id===person.id?{...item,active:!item.active}:item)); return <div className="screen"><PageTitle title={tx('スタッフ詳細','Staff details')} onBack={()=>navigate('staff')} action={<button className="text-button" onClick={()=>{setEditingStaffId(person.id);navigate('staffForm');}}>{tx('編集','Edit')}</button>} /><div className="profile-card"><Avatar name={person[locale]} color={person.color}/><h3>{person[locale]}</h3><StatusPill tone={person.active?'mint':'gray'}>{person.active?tx('在籍','Active'):tx('退職','Inactive')}</StatusPill><p>{person.role==='ADMIN'?tx('管理者','Admin'):tx('メンバー','Member')}</p></div><dl className="detail-list"><div><dt>{tx('時給','Hourly rate')}</dt><dd>¥{person.hourlyRate.toLocaleString()}</dd></div><div><dt>{tx('電話番号','Phone')}</dt><dd>{person.phone||'—'}</dd></div><div><dt>{tx('スタッフPIN','Staff PIN')}</dt><dd>••••</dd></div></dl><div className="action-list"><button onClick={()=>navigate('builder')}><CalendarDays/><span><strong>{tx('シフトを編集','Edit schedule')}</strong><small>{tx('確定時間と希望を確認','Review shifts and availability')}</small></span><ChevronRight/></button><button onClick={()=>navigate('attendanceHistory')}><ReceiptText/><span><strong>{tx('勤怠履歴','Attendance history')}</strong><small>{tx('打刻と修正履歴','Clock records and corrections')}</small></span><ChevronRight/></button><button onClick={()=>navigate('payroll')}><WalletCards/><span><strong>{tx('給与概算','Pay estimate')}</strong><small>{tx('時給から自動計算','Calculated from hourly rate')}</small></span><ChevronRight/></button></div><button className={person.active?'secondary-button danger-button full-button':'primary-button full-button'} onClick={()=>openModal({type:'confirm',title:person.active?tx('スタッフを無効化しますか？','Deactivate staff?'):tx('スタッフを再有効化しますか？','Reactivate staff?'),body:tx('この操作はモック内でいつでも戻せます。','You can reverse this anytime in the mock.'),onConfirm:toggle})}>{person.active?tx('スタッフを無効化','Deactivate staff'):tx('スタッフを再有効化','Reactivate staff')}</button></div>; }
 
-function PayrollScreen({ locale, navigate }: SharedProps) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return (
-    <div className="screen payroll-screen">
-      <PageTitle title={tx('給与概算', 'Pay estimate')} subtitle={tx('2026年10月', 'October 2026')} onBack={() => navigate('settings')} />
-      <section className="pay-hero"><small>{tx('今月の給与概算', 'ESTIMATED PAY')}</small><h2><span>¥</span>107,250</h2><p>{tx('10月1日〜10月31日', 'October 1–31')}</p></section>
-      <div className="pay-stats"><span><small>{tx('勤務日数', 'DAYS WORKED')}</small><strong>18<em>{tx('日', ' days')}</em></strong></span><span><small>{tx('勤務時間', 'HOURS')}</small><strong>82<em>h</em> 30<em>m</em></strong></span></div>
-      <div className="pay-breakdown"><div><span>{tx('時給', 'Hourly rate')}</span><strong>¥1,300</strong></div><div><span>{tx('通常勤務', 'Regular hours')}</span><strong>82h 30m</strong></div><div><span>{tx('概算合計', 'Estimated total')}</span><strong>¥107,250</strong></div></div>
-      <div className="disclaimer"><HelpCircle size={18} /><p><strong>{tx('概算金額です', 'This is an estimate')}</strong><br />{tx('実際の給与明細・支給額とは異なる場合があります。', 'Actual payroll and your final payment may differ.')}</p></div>
-      <SectionHead title={tx('勤怠履歴', 'Attendance history')} />
-      <div className="history-list">{[['10/12','18:02 — 23:04','4h 32m'],['10/10','17:58 — 22:01','4h 03m'],['10/08','12:01 — 18:06','5h 35m']].map(([date,time,total]) => <button key={date} onClick={() => navigate('correction')}><span><strong>{date}</strong><small>{time} · {tx('休憩30分', '30m break')}</small></span><b>{total}</b><ChevronRight size={16} /></button>)}</div>
-      <button className="wide-ghost-button" onClick={() => navigate('correction')}><FilePenLine size={17} />{tx('勤怠の修正を申請', 'Request a correction')}</button>
-    </div>
-  );
-}
+function StaffForm({ locale, navigate, staff, setStaff, editingId, storeId, setSelectedStaffId, openModal }: Pick<ScreenProps,'locale'|'navigate'|'staff'|'setStaff'|'storeId'|'setSelectedStaffId'|'openModal'> & {editingId:string|null}) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const original=staff.find((item)=>item.id===editingId); const [name,setName]=useState(original?.ja??''); const [english,setEnglish]=useState(original?.en??''); const [phone,setPhone]=useState(original?.phone??''); const [rate,setRate]=useState(String(original?.hourlyRate??1300)); const [pin,setPin]=useState(original?.pin??''); const [role,setRole]=useState<Role>(original?.role??'MEMBER'); const save=(event:FormEvent)=>{event.preventDefault();const id=original?.id??`staff-${Date.now()}`;const record:StaffRecord={id,ja:name,en:english||name,phone,hourlyRate:Number(rate),pin,role,storeId,active:original?.active??true,color:original?.color??'#4f86a8'};setStaff((items)=>original?items.map((item)=>item.id===id?record:item):[...items,record]);setSelectedStaffId(id);openModal({type:'success',title:tx('保存しました','Staff saved'),body:tx('スタッフ情報を更新しました。','Staff details were updated.')});navigate('staffDetail');}; return <div className="screen"><PageTitle title={original?tx('スタッフを編集','Edit staff'):tx('スタッフを追加','Add staff')} onBack={()=>navigate(original?'staffDetail':'staff')} /><form className="mock-form" onSubmit={save}><label><span>{tx('氏名','Name')}</span><input required value={name} onChange={(event)=>setName(event.target.value)} placeholder={tx('例：佐々木 直子','e.g. Naoko Sasaki')}/></label><label><span>{tx('英語表示名','English name')}</span><input value={english} onChange={(event)=>setEnglish(event.target.value)} placeholder="Naoko Sasaki"/></label><label><span>{tx('電話番号','Phone')}</span><input value={phone} onChange={(event)=>setPhone(event.target.value)} inputMode="tel"/></label><div className="split-fields"><label><span>{tx('時給','Hourly rate')}</span><input type="number" min="0" value={rate} onChange={(event)=>setRate(event.target.value)}/></label><label><span>PIN</span><input required minLength={4} maxLength={6} inputMode="numeric" value={pin} onChange={(event)=>setPin(event.target.value)}/></label></div><label><span>{tx('権限','Role')}</span><select value={role} onChange={(event)=>setRole(event.target.value as Role)}><option value="MEMBER">{tx('メンバー','Member')}</option><option value="ADMIN">{tx('管理者','Admin')}</option></select></label><button className="primary-button" type="submit">{tx('保存する','Save staff')}</button></form></div>; }
 
-function CorrectionScreen({ locale, navigate, openModal }: SharedProps & Pick<ScreenProps, 'openModal'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return (
-    <div className="screen correction-screen">
-      <PageTitle title={tx('勤怠の修正申請', 'Request a correction')} subtitle={tx('10月12日の勤務', 'Shift on October 12')} onBack={() => navigate('payroll')} />
-      <section className="current-record"><small>{tx('現在の記録', 'CURRENT RECORD')}</small><div><span><em>{tx('出勤', 'CLOCK IN')}</em><strong>18:02</strong></span><ArrowRight size={16} /><span><em>{tx('退勤', 'CLOCK OUT')}</em><strong>23:04</strong></span></div><p>{tx('休憩 30分 · 実勤務 4時間32分', '30m break · 4h 32m worked')}</p></section>
-      <SectionHead title={tx('修正後', 'Corrected time')} />
-      <div className="correction-times"><label>{tx('出勤', 'Clock in')}<input type="time" defaultValue="18:00" /></label><Minus size={16} /><label>{tx('退勤', 'Clock out')}<input type="time" defaultValue="23:00" /></label></div>
-      <label className="form-label">{tx('理由', 'Reason')}<textarea defaultValue={tx('打刻を忘れていました', 'I forgot to clock in on time.')} /></label>
-      <div className="approval-note"><ShieldCheck size={18} /><span><strong>{tx('管理者の確認後に反映されます', 'A manager will review this')}</strong><small>{tx('申請内容は監査履歴に残ります。', 'The request will remain in the audit history.')}</small></span></div>
-      <button className="primary-button" onClick={() => openModal({ type: 'success', title: tx('修正を申請しました', 'Correction requested'), body: tx('管理者の確認後に勤怠へ反映されます。', 'Your timesheet will update after manager approval.') })}><Send size={17} />{tx('修正を申請', 'Submit request')}</button>
-    </div>
-  );
-}
+function OpenShifts({ locale, role, navigate, applied, setApplied, hired, setHired, openModal }: Pick<ScreenProps,'locale'|'role'|'navigate'|'applied'|'setApplied'|'hired'|'setHired'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); if(role==='MEMBER')return <div className="screen"><PageTitle title={tx('募集中のシフト','Open shifts')} /><div className="open-shift-card"><div><StatusPill tone={hired?'mint':'orange'}>{hired?tx('採用済み','Hired'):tx('あと1名','1 spot')}</StatusPill><h3>{tx('11月13日（金）','Friday, Nov 13')}</h3><strong>18:00 — 23:30</strong><p><MapPin/> {tx('池袋店','Ikebukuro')}</p></div><button className={applied?'secondary-button':'primary-button'} disabled={hired} onClick={()=>setApplied(!applied)}>{hired?tx('採用されました','You’re hired'):applied?tx('応募を取り消す','Cancel application'):tx('このシフトに応募','Apply')}</button></div></div>; return <div className="screen"><PageTitle title={tx('欠員募集','Open shift recruitment')} onBack={()=>navigate('home')} /><div className="open-shift-card"><div><StatusPill tone="orange">{tx('応募 2名','2 applicants')}</StatusPill><h3>{tx('11月13日（金）','Friday, Nov 13')}</h3><strong>18:00 — 23:30</strong><p><MapPin/> {tx('池袋店 · あと1名','Ikebukuro · 1 spot')}</p></div></div><SectionHead title={tx('応募者','Applicants')} /><div className="list-card">{['佐藤 美咲','鈴木 一郎'].map((name,index)=><div className="person-row" key={name}><Avatar name={name} small/><span><strong>{locale==='ja'?name:index?'Ichiro Suzuki':'Misaki Sato'}</strong><small>{tx('応募済み','Applied')}</small></span><button className="mini-button" disabled={hired} onClick={()=>openModal({type:'confirm',title:tx('このスタッフを採用しますか？','Hire this member?'),body:tx('確定シフトへ追加して本人へ通知します。','Adds the confirmed shift and notifies them.'),onConfirm:()=>setHired(true)})}>{hired&&index===0?tx('採用済み','Hired'):tx('採用','Hire')}</button></div>)}</div><button className="secondary-button full-button" onClick={()=>openModal({type:'success',title:tx('募集を共有しました','Recruitment shared'),body:tx('対象メンバーへ通知しました。','Eligible members were notified.')})}>{tx('募集を再通知','Send reminder')}</button></div>; }
 
-function KioskScreen({ locale, navigate, openModal }: SharedProps & Pick<ScreenProps, 'openModal'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  return <div className="screen kiosk-screen"><PageTitle title={tx('共用端末モード', 'Shared time clock')} subtitle={tx('機能追加候補 · UIプレビュー', 'Feature preview')} onBack={() => navigate('teamAttendance')} /><section className="kiosk-card"><div className="kiosk-brand"><span className="kiosk-logo">C</span><strong>Crewami</strong></div><small>{stores[locale][0]}</small><h2>{tx('出退勤', 'Time clock')}</h2><label>{tx('名前を選択', 'Select your name')}<select defaultValue="taro"><option value="taro">{tx('田中 太郎', 'Taro Tanaka')}</option><option>{tx('山田 花子', 'Hana Yamada')}</option></select></label><label>PIN<input value="••••" readOnly /></label><button className="kiosk-clock-button" onClick={() => openModal({ type: 'success', title: tx('出勤しました', 'Clocked in'), body: tx('田中 太郎 · 18:02', 'Taro Tanaka · 18:02') })}><Clock3 size={22} />{tx('出勤', 'Clock in')}</button></section><p className="kiosk-note"><Sparkles size={15} />{tx('店舗のiPad等で使う将来機能のイメージです。', 'A concept for a shared iPad at the store.')}</p></div>;
-}
+function GpsScreen({ locale, role, gpsSharing, setGpsSharing, navigate, staff }: Pick<ScreenProps,'locale'|'role'|'gpsSharing'|'setGpsSharing'|'navigate'|'staff'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); return <div className="screen"><PageTitle title={tx('位置情報共有','Location sharing')} onBack={()=>navigate('settings')} /><div className="map-mock"><div className="map-road road-one"/><div className="map-road road-two"/>{staff.slice(0,3).map((person,index)=><span key={person.id} className={`map-person map-person-${index+1}`} title={person[locale]}><Avatar name={person[locale]} color={person.color} small/></span>)}<span className="store-pin"><Store/> {tx('渋谷店','Shibuya')}</span></div>{role==='MEMBER'?<section className="sharing-control"><div><Navigation/><span><strong>{tx('勤務中のみ共有','Share while working')}</strong><small>{gpsSharing?tx('現在共有中です','Currently sharing'):tx('現在はオフです','Currently off')}</small></span></div><button className={`switch ${gpsSharing?'on':''}`} onClick={()=>setGpsSharing(!gpsSharing)}><i/></button></section>:<div className="list-card">{staff.slice(0,3).map((person,index)=><div className="person-row" key={person.id}><Avatar name={person[locale]} color={person.color} small/><span><strong>{person[locale]}</strong><small>{tx(`${index+2}分前に更新`,`Updated ${index+2}m ago`)}</small></span><StatusPill tone="mint">{tx('共有中','Sharing')}</StatusPill></div>)}</div>}<div className="privacy-note"><ShieldCheck/><p>{tx('位置情報は本人がオンにした勤務時間中のみ共有されます。','Location is shared only during shifts when the member enables it.')}</p></div></div>; }
 
-function SettingsScreen({ locale, role, navigate }: SharedProps & Pick<ScreenProps, 'role'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const isOwner = role === 'OWNER';
-  const isMember = role === 'MEMBER';
-  const groups = [
-    { label: tx('ワークスペース', 'WORKSPACE'), items: [
-      ...(isOwner ? [[tx('店舗', 'Stores'), Building2, 'stores' as Screen], [tx('サブスクリプション', 'Subscription'), CreditCard, 'subscription' as Screen]] : []),
-      ...(!isMember ? [[tx('位置情報マップ', 'Live locations'), MapPinned, 'gps' as Screen], [tx('共用端末モード', 'Shared time clock'), Smartphone, 'kiosk' as Screen]] : [[tx('給与概算・勤怠履歴', 'Pay estimate & history'), WalletCards, 'payroll' as Screen], [tx('位置情報共有', 'Location sharing'), Navigation, 'gps' as Screen]]),
-    ]},
-    { label: tx('設定', 'PREFERENCES'), items: [[tx('通知', 'Notifications'), BellRing, 'home' as Screen],[tx('言語', 'Language'), Languages, 'home' as Screen],[tx('プライバシー', 'Privacy'), ShieldCheck, 'home' as Screen]] },
-    { label: tx('サポート', 'SUPPORT'), items: [[tx('フィードバック', 'Send feedback'), MessageCircleMore, 'feedback' as Screen],[tx('Crewamiを評価', 'Review Crewami'), Sparkles, 'home' as Screen],[tx('利用規約', 'Terms'), ReceiptText, 'home' as Screen]] },
-  ];
-  return (
-    <div className="screen settings-screen">
-      <PageTitle title={tx('その他', 'More')} />
-      <div className="account-card"><Avatar name={role === 'OWNER' ? tx('石井 海斗', 'Kaito Ishii') : role === 'MANAGER' ? tx('山田 花子', 'Hana Yamada') : tx('田中 太郎', 'Taro Tanaka')} /><span><strong>{role === 'OWNER' ? tx('石井 海斗', 'Kaito Ishii') : role === 'MANAGER' ? tx('山田 花子', 'Hana Yamada') : tx('田中 太郎', 'Taro Tanaka')}</strong><small>{role} · {stores[locale][0]}</small></span><ChevronRight size={18} /></div>
-      {groups.map((group) => <section className="settings-group" key={group.label}><small>{group.label}</small><div>{group.items.map(([label,Icon,target]) => <button key={label as string} onClick={() => navigate(target as Screen)}><span className="setting-icon"><Icon size={18} /></span><strong>{label as string}</strong>{label === tx('言語', 'Language') && <em>{locale === 'ja' ? '日本語' : 'English'}</em>}<ChevronRight size={17} /></button>)}</div></section>)}
-      <button className="logout-button"><LogOut size={17} />{tx('ログアウト', 'Log out')}</button>
-      <p className="version">Crewami Prototype · v0.1.0</p>
-    </div>
-  );
-}
+function StoresScreen({ locale, navigate, stores, setEditingStoreId, staff }: Pick<ScreenProps,'locale'|'navigate'|'stores'|'setEditingStoreId'|'staff'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); return <div className="screen"><PageTitle title={tx('店舗管理','Store management')} onBack={()=>navigate('settings')} action={<button className="round-add" onClick={()=>{setEditingStoreId(null);navigate('storeForm');}}><Plus/></button>} /><div className="list-card">{stores.map((store)=><button className="store-management-row" key={store.id} onClick={()=>{setEditingStoreId(store.id);navigate('storeForm');}}><span className="store-symbol">{store.en[0]}</span><span><strong>{store[locale]}</strong><small>{staff.filter((person)=>person.storeId===store.id&&person.active).length} {tx('人 · ',' staff · ')}{store.timezone}</small></span><ChevronRight/></button>)}</div></div>; }
 
-function FeedbackScreen({ locale, navigate, openModal }: SharedProps & Pick<ScreenProps, 'openModal'>) {
-  const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const [category, setCategory] = useState('idea');
-  return (
-    <div className="screen feedback-screen">
-      <PageTitle title={tx('フィードバック', 'Feedback')} onBack={() => navigate('settings')} />
-      <div className="feedback-intro"><span><MessageCircleMore size={25} /></span><h3>{tx('Crewamiを一緒に育ててください', 'Help us shape Crewami')}</h3><p>{tx('気づいたことや、もっと便利になるアイデアをお聞かせください。', 'Tell us what worked, what didn’t, or what would make your day easier.')}</p></div>
-      <label className="form-label">{tx('カテゴリ', 'Category')}<div className="feedback-categories">{[['bug',tx('不具合', 'Bug')],['idea',tx('改善要望', 'Idea')],['other',tx('その他', 'Other')]].map(([value,label]) => <button key={value} className={category === value ? 'active' : ''} onClick={() => setCategory(value)}>{category === value && <Check size={14} />}{label}</button>)}</div></label>
-      <label className="form-label">{tx('メッセージ', 'Message')}<textarea placeholder={tx('どんなことでもお聞かせください…', 'Share your thoughts…')} defaultValue={tx('シフト作成画面がとても分かりやすいです。', 'The schedule builder feels very easy to understand.')} /></label>
-      <label className="form-label">{tx('メールアドレス（任意）', 'Email (optional)')}<div className="input-with-icon"><Mail size={17} /><input type="email" placeholder="you@example.com" /></div></label>
-      <button className="primary-button" onClick={() => openModal({ type: 'success', title: tx('送信しました', 'Thank you!'), body: tx('貴重なご意見をありがとうございます。', 'Your feedback helps make Crewami better.') })}><Send size={17} />{tx('フィードバックを送信', 'Send feedback')}</button>
-    </div>
-  );
-}
+function StoreForm({ locale, navigate, stores, setStores, editingId, openModal }: Pick<ScreenProps,'locale'|'navigate'|'stores'|'setStores'|'openModal'> & {editingId:string|null}) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const original=stores.find((item)=>item.id===editingId); const [name,setName]=useState(original?.ja??''); const [english,setEnglish]=useState(original?.en??''); const [country,setCountry]=useState(original?.country??'日本'); const [timezone,setTimezone]=useState(original?.timezone??'Asia/Tokyo'); return <div className="screen"><PageTitle title={original?tx('店舗を編集','Edit store'):tx('店舗を追加','Add store')} onBack={()=>navigate('stores')} /><form className="mock-form" onSubmit={(event)=>{event.preventDefault();const item:StoreRecord={id:original?.id??`store-${Date.now()}`,ja:name,en:english||name,country,timezone};setStores((items)=>original?items.map((store)=>store.id===item.id?item:store):[...items,item]);openModal({type:'success',title:tx('店舗を保存しました','Store saved'),body:tx('店舗一覧へ反映しました。','The store list has been updated.')});navigate('stores');}}><label><span>{tx('店舗名','Store name')}</span><input required value={name} onChange={(event)=>setName(event.target.value)}/></label><label><span>{tx('英語表示名','English name')}</span><input value={english} onChange={(event)=>setEnglish(event.target.value)}/></label><label><span>{tx('国・地域','Country / region')}</span><input value={country} onChange={(event)=>setCountry(event.target.value)}/></label><label><span>{tx('タイムゾーン','Timezone')}</span><select value={timezone} onChange={(event)=>setTimezone(event.target.value)}><option>Asia/Tokyo</option><option>Asia/Seoul</option><option>America/Los_Angeles</option><option>Europe/London</option></select></label><button className="primary-button" type="submit">{tx('店舗を保存','Save store')}</button></form></div>; }
+
+function SubscriptionScreen({ locale, scenario, navigate, openModal }: Pick<ScreenProps,'locale'|'scenario'|'navigate'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const [plan,setPlan]=useState(scenario==='paid'?'team':'starter'); return <div className="screen"><PageTitle title={tx('プランとお支払い','Plan & billing')} onBack={()=>navigate('settings')} /><div className="plan-current"><CreditCard/><span><small>{tx('現在のプラン','CURRENT PLAN')}</small><strong>{plan==='starter'?'Starter':'Team'}</strong><p>{scenario==='trial'?tx('無料体験 あと9日','9 days left in trial'):tx('次回更新 12月1日','Renews Dec 1')}</p></span></div><div className="plan-grid"><button className={plan==='starter'?'selected':''} onClick={()=>setPlan('starter')}><span>Starter</span><strong>¥980<small>/月</small></strong><p>{tx('5名まで・1店舗','Up to 5 staff · 1 store')}</p></button><button className={plan==='team'?'selected':''} onClick={()=>setPlan('team')}><span>Team</span><strong>¥2,980<small>/月</small></strong><p>{tx('30名まで・3店舗','Up to 30 staff · 3 stores')}</p></button></div><div className="seat-meter"><span><strong>{tx('利用席数','Seats used')}</strong><small>6 / {plan==='starter'?5:30}</small></span><div className="progress-track"><i style={{width:plan==='starter'?'100%':'20%'}}/></div></div><button className="primary-button full-button" onClick={()=>openModal({type:'confirm',title:tx('プランを変更しますか？','Change plan?'),body:tx(`${plan} プランを選択しています。これはUI確認用で、決済は発生しません。`,`You selected ${plan}. This mock will not charge you.`),onConfirm:()=>openModal({type:'success',title:tx('プランを変更しました','Plan changed'),body:tx('モック内の表示を更新しました。','The mock plan was updated.')})})}>{tx('このプランに変更','Change to this plan')}</button></div>; }
+
+function PayrollScreen({ locale, navigate, role }: Pick<ScreenProps,'locale'|'navigate'|'role'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); return <div className="screen"><PageTitle title={tx('給与概算','Pay estimate')} onBack={()=>navigate('settings')} /><div className="pay-hero"><small>{tx('2026年11月 見込み','NOVEMBER 2026 ESTIMATE')}</small><strong>{role==='ADMIN'?'¥428,600':'¥108,420'}</strong><p>{tx('確定勤怠 × 登録時給で計算','Based on approved time × hourly rate')}</p></div><div className="list-card">{role==='ADMIN'?[['田中 太郎','82h','¥106,600'],['山田 花子','96h','¥139,200'],['佐藤 美咲','74h','¥99,900']].map((row)=><div className="pay-row" key={row[0]}><span><strong>{locale==='ja'?row[0]:row[0]==='田中 太郎'?'Taro Tanaka':row[0]==='山田 花子'?'Hana Yamada':'Misaki Sato'}</strong><small>{row[1]}</small></span><strong>{row[2]}</strong></div>):<><div className="pay-row"><span><strong>{tx('通常勤務','Regular hours')}</strong><small>78h</small></span><strong>¥101,400</strong></div><div className="pay-row"><span><strong>{tx('深夜加算','Night premium')}</strong><small>4h</small></span><strong>¥7,020</strong></div></>}</div><div className="form-note"><AlertTriangle/><p>{tx('税・交通費・各種控除を含まない参考額です。','Estimate excludes taxes, transit, and deductions.')}</p></div></div>; }
+
+function KioskScreen({ locale, navigate, staff, openModal }: Pick<ScreenProps,'locale'|'navigate'|'staff'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const [selected,setSelected]=useState<string|null>(null); const [pin,setPin]=useState(''); const [result,setResult]=useState<string|null>(null); const submit=()=>{const person=staff.find((item)=>item.id===selected);if(person&&pin===person.pin){setResult(tx(`${person.ja}さんが出勤しました`,`${person.en} clocked in`));setPin('');}else setResult(tx('PINが一致しません','Incorrect PIN'));}; return <div className="screen kiosk-screen"><PageTitle title={tx('共用端末打刻','Shared kiosk')} onBack={()=>navigate('settings')} /><div className="kiosk-brand"><Smartphone/><h3>{tx('名前を選んで打刻','Select your name to clock in')}</h3></div><div className="kiosk-people">{staff.filter((person)=>person.active).slice(0,6).map((person)=><button key={person.id} className={selected===person.id?'selected':''} onClick={()=>{setSelected(person.id);setResult(null);}}><Avatar name={person[locale]} color={person.color} small/><span>{person[locale]}</span></button>)}</div>{selected&&<><label className="pin-field"><span>{tx('スタッフPIN','Staff PIN')}</span><input type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(event)=>setPin(event.target.value)} placeholder="••••"/></label><button className="primary-button full-button" onClick={submit}>{tx('出勤を記録','Clock in')}</button></>}{result&&<div className={result.includes('一致')||result.includes('Incorrect')?'result-banner error':'result-banner'}>{result}</div>}<button className="text-button centered" onClick={()=>openModal({type:'notice',title:tx('管理者メニュー','Admin menu'),body:tx('実機では管理者PINで端末設定を変更します。','On a real device, admin PIN unlocks kiosk settings.')})}>{tx('管理者メニュー','Admin menu')}</button></div>; }
+
+function NotificationsScreen({ locale, navigate, notifications, setNotifications }: Pick<ScreenProps,'locale'|'navigate'|'notifications'|'setNotifications'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const rows:[keyof typeof notifications,string,string][]=[['shift',tx('シフト更新','Schedule updates'),tx('公開・変更・希望締切','Publishing, changes, deadlines')],['attendance',tx('勤怠のお知らせ','Attendance alerts'),tx('打刻忘れ・修正申請','Missed punches and corrections')],['recruitment',tx('欠員募集','Open shifts'),tx('募集開始・応募結果','Openings and application results')]]; return <div className="screen"><PageTitle title={tx('通知設定','Notifications')} onBack={()=>navigate('settings')} /><div className="settings-group">{rows.map(([key,title,body])=><div className="toggle-row" key={key}><BellRing/><span><strong>{title}</strong><small>{body}</small></span><button className={`switch ${notifications[key]?'on':''}`} onClick={()=>setNotifications((current)=>({...current,[key]:!current[key]}))} aria-label={title}><i/></button></div>)}</div></div>; }
+
+function LanguageScreen({ locale, setLocale, navigate, openModal }: Pick<ScreenProps,'locale'|'setLocale'|'navigate'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); return <div className="screen"><PageTitle title={tx('言語','Language')} onBack={()=>navigate('settings')} /><div className="language-options"><button className={locale==='ja'?'selected':''} onClick={()=>{setLocale('ja');openModal({type:'success',title:'日本語に変更しました',body:'表示言語を保存しました。'});}}><span>日本語<small>Japanese</small></span>{locale==='ja'&&<Check/>}</button><button className={locale==='en'?'selected':''} onClick={()=>{setLocale('en');openModal({type:'success',title:'Language changed',body:'Your display language is now English.'});}}><span>English<small>英語</small></span>{locale==='en'&&<Check/>}</button></div></div>; }
+
+function FeedbackScreen({ locale, navigate, openModal }: Pick<ScreenProps,'locale'|'navigate'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const [rating,setRating]=useState(0); const [text,setText]=useState(''); return <div className="screen"><PageTitle title={tx('フィードバック','Feedback')} onBack={()=>navigate('settings')} /><div className="feedback-card"><MessageCircleMore/><h3>{tx('Crewamiはいかがですか？','How is Crewami working for you?')}</h3><div className="rating-row">{[1,2,3,4,5].map((item)=><button key={item} className={rating===item?'selected':''} onClick={()=>setRating(item)}>{['😕','🙁','😐','🙂','😍'][item-1]}</button>)}</div><textarea value={text} onChange={(event)=>setText(event.target.value)} placeholder={tx('改善してほしいことを教えてください','Tell us what we could improve')}/><button className="primary-button" disabled={!rating} onClick={()=>{openModal({type:'success',title:tx('ありがとうございます','Thank you'),body:tx('フィードバックを受け付けました。','Your feedback was received.')});setText('');setRating(0);}}><Send/>{tx('送信する','Send feedback')}</button></div></div>; }
+
+function SettingsScreen({ locale, role, navigate, openModal }: Pick<ScreenProps,'locale'|'role'|'navigate'|'openModal'>) { const tx=(ja:string,en:string)=>translate(locale,ja,en); const admin=role==='ADMIN'; const rows=admin?[[Building2,tx('店舗管理','Stores'),'stores'],[CreditCard,tx('プランと支払い','Plan & billing'),'subscription'],[Smartphone,tx('共用端末打刻','Shared kiosk'),'kiosk'],[MapPinned,tx('GPSマップ','GPS map'),'gps'],[WalletCards,tx('給与概算','Pay estimate'),'payroll']]:[[ReceiptText,tx('勤怠履歴','Attendance history'),'attendanceHistory'],[WalletCards,tx('給与概算','Pay estimate'),'payroll'],[Navigation,tx('位置情報共有','Location sharing'),'gps']]; return <div className="screen"><PageTitle title={tx('その他','More')} /><div className="settings-profile"><Avatar name={admin?tx('管理者','Admin'):tx('メンバー','Member')} /><span><strong>{admin?tx('管理者アカウント','Admin account'):tx('メンバーアカウント','Member account')}</strong><small>{admin?tx('管理者','Admin'):tx('メンバー','Member')}</small></span></div><div className="settings-group">{rows.map(([Icon,label,target])=><button key={String(target)} onClick={()=>navigate(target as Screen)}><Icon/><span>{String(label)}</span><ChevronRight/></button>)}</div><div className="settings-group"><button onClick={()=>navigate('notifications')}><BellRing/><span>{tx('通知設定','Notifications')}</span><ChevronRight/></button><button onClick={()=>navigate('language')}><Languages/><span>{tx('言語','Language')}</span><small>{locale==='ja'?'日本語':'English'}</small><ChevronRight/></button><button onClick={()=>navigate('feedback')}><MessageCircleMore/><span>{tx('フィードバック','Feedback')}</span><ChevronRight/></button></div><div className="settings-group"><button onClick={()=>openModal({type:'notice',title:tx('プライバシー','Privacy'),body:tx('位置情報・勤怠データは店舗運営の目的に限って扱われます。','Location and attendance data are used only for store operations.')})}><LockKeyhole/><span>{tx('プライバシー','Privacy')}</span><ChevronRight/></button><button onClick={()=>openModal({type:'notice',title:tx('利用規約','Terms'),body:tx('これはUI検証用モックです。実際の契約や保存は発生しません。','This is a UI prototype; no contract or storage occurs.')})}><Globe2/><span>{tx('利用規約','Terms')}</span><ChevronRight/></button></div><button className="logout-button" onClick={()=>openModal({type:'confirm',title:tx('ログアウトしますか？','Log out?'),body:tx('モックのため状態はページ更新まで保持されます。','Prototype state remains until refresh.'),onConfirm:()=>navigate('home')})}><LogOut/>{tx('ログアウト','Log out')}</button></div>; }
 
 export function PrototypeScreens(props: ScreenProps) {
-  const { screen } = props;
-  if (screen === 'home') return props.role === 'MEMBER' ? <MemberHome {...props} /> : <OwnerHome {...props} />;
-  if (screen === 'collection') return <CollectionScreen {...props} />;
-  if (screen === 'availability') return <AvailabilityScreen {...props} />;
-  if (screen === 'builder') return <BuilderScreen {...props} />;
-  if (screen === 'publish') return <PublishScreen {...props} />;
-  if (screen === 'schedule') return <MySchedule {...props} />;
-  if (screen === 'attendance') return <AttendanceScreen {...props} />;
-  if (screen === 'teamAttendance') return <TeamAttendance {...props} />;
-  if (screen === 'openShifts') return <OpenShifts {...props} />;
-  if (screen === 'gps') return <GpsScreen {...props} />;
-  if (screen === 'staff') return <StaffScreen {...props} />;
-  if (screen === 'staffDetail') return <StaffDetail {...props} />;
-  if (screen === 'stores') return <StoresScreen {...props} />;
-  if (screen === 'subscription') return <SubscriptionScreen {...props} />;
-  if (screen === 'payroll') return <PayrollScreen {...props} />;
-  if (screen === 'correction') return <CorrectionScreen {...props} />;
-  if (screen === 'kiosk') return <KioskScreen {...props} />;
-  if (screen === 'feedback') return <FeedbackScreen {...props} />;
+  if (props.screen === 'home') return props.role === 'ADMIN' ? <AdminHome {...props} /> : <MemberHome {...props} />;
+  if (props.screen === 'collection') return <CollectionScreen {...props} />;
+  if (props.screen === 'availabilityRequest') return <AvailabilityRequestScreen {...props} />;
+  if (props.screen === 'availability') return <AvailabilityScreen {...props} submitted={props.availabilitySubmitted} setSubmitted={props.setAvailabilitySubmitted} />;
+  if (props.screen === 'builder') return <BuilderScreen {...props} />;
+  if (props.screen === 'publish') return <PublishScreen {...props} />;
+  if (props.screen === 'schedule') return <MemberSchedule {...props} />;
+  if (props.screen === 'attendance') return <AttendanceScreen {...props} />;
+  if (props.screen === 'teamAttendance') return <TeamAttendance {...props} />;
+  if (props.screen === 'attendanceHistory') return <AttendanceHistory {...props} />;
+  if (props.screen === 'attendanceDetail') return <AttendanceDetail {...props} />;
+  if (props.screen === 'correction') return <CorrectionScreen {...props} />;
+  if (props.screen === 'correctionReview') return <CorrectionReview {...props} status={props.correctionStatus} setStatus={props.setCorrectionStatus} />;
+  if (props.screen === 'openShifts') return <OpenShifts {...props} />;
+  if (props.screen === 'gps') return <GpsScreen {...props} />;
+  if (props.screen === 'staff') return <StaffScreen {...props} />;
+  if (props.screen === 'staffDetail') return <StaffDetail {...props} />;
+  if (props.screen === 'staffForm') return <StaffForm {...props} editingId={props.editingStaffId} />;
+  if (props.screen === 'stores') return <StoresScreen {...props} />;
+  if (props.screen === 'storeForm') return <StoreForm {...props} editingId={props.editingStoreId} />;
+  if (props.screen === 'subscription') return <SubscriptionScreen {...props} />;
+  if (props.screen === 'payroll') return <PayrollScreen {...props} />;
+  if (props.screen === 'kiosk') return <KioskScreen {...props} />;
+  if (props.screen === 'notifications') return <NotificationsScreen {...props} />;
+  if (props.screen === 'language') return <LanguageScreen {...props} />;
+  if (props.screen === 'feedback') return <FeedbackScreen {...props} />;
   return <SettingsScreen {...props} />;
 }
