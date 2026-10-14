@@ -1,5 +1,9 @@
 export type Role = 'ADMIN' | 'MEMBER';
 export type Locale = 'ja' | 'en';
+export type FeatureKey = 'SHIFT_COLLECTION' | 'SCHEDULE' | 'ATTENDANCE' | 'OPEN_SHIFTS' | 'GPS' | 'ESTIMATED_PAY';
+export type Plan = 'COLLECTION' | 'FULL';
+export type SubscriptionStatus = 'trial' | 'active' | 'expired';
+export type StaffStatus = 'INVITED' | 'ACTIVE' | 'DISABLED';
 export type Scenario =
   | 'normal'
   | 'collecting'
@@ -7,9 +11,15 @@ export type Scenario =
   | 'working'
   | 'shortage'
   | 'trial'
-  | 'paid';
+  | 'expired'
+  | 'collectionPlan'
+  | 'fullPlan';
 
 export type Screen =
+  | 'login'
+  | 'forgotPassword'
+  | 'passwordReset'
+  | 'inviteSetPassword'
   | 'home'
   | 'collection'
   | 'availabilityRequest'
@@ -31,6 +41,10 @@ export type Screen =
   | 'stores'
   | 'storeForm'
   | 'subscription'
+  | 'featureSettings'
+  | 'export'
+  | 'customIntegration'
+  | 'customQuote'
   | 'payroll'
   | 'kiosk'
   | 'notifications'
@@ -49,7 +63,8 @@ export interface StaffRecord {
   storeId: string;
   hourlyRate: number;
   phone: string;
-  pin: string;
+  email: string;
+  status: StaffStatus;
   active: boolean;
   color: string;
 }
@@ -58,8 +73,7 @@ export interface StoreRecord {
   id: string;
   ja: string;
   en: string;
-  country: string;
-  timezone: string;
+  description: string;
 }
 
 export interface TimeRange { start: string; end: string }
@@ -67,19 +81,68 @@ export interface StaffShift { staffId: string; availability?: TimeRange; confirm
 export interface ShiftDay { id: string; ja: string; en: string; rows: StaffShift[] }
 
 export const initialStores: StoreRecord[] = [
-  { id: 'shibuya', ja: '渋谷店', en: 'Shibuya', country: '日本', timezone: 'Asia/Tokyo' },
-  { id: 'shinjuku', ja: '新宿店', en: 'Shinjuku', country: '日本', timezone: 'Asia/Tokyo' },
-  { id: 'ikebukuro', ja: '池袋店', en: 'Ikebukuro', country: '日本', timezone: 'Asia/Tokyo' },
+  { id: 'shibuya', ja: '渋谷店', en: 'Shibuya', description: 'メイン店舗' },
+  { id: 'shinjuku', ja: '新宿店', en: 'Shinjuku', description: '駅前店舗' },
+  { id: 'ikebukuro', ja: '池袋店', en: 'Ikebukuro', description: '西口店舗' },
 ];
 
 export const initialStaff: StaffRecord[] = [
-  { id: 'tanaka', ja: '田中 太郎', en: 'Taro Tanaka', role: 'MEMBER', storeId: 'shibuya', hourlyRate: 1300, phone: '090-1234-5678', pin: '1234', active: true, color: '#2c7b73' },
-  { id: 'yamada', ja: '山田 花子', en: 'Hana Yamada', role: 'ADMIN', storeId: 'shibuya', hourlyRate: 1450, phone: '090-2345-6789', pin: '2345', active: true, color: '#ef8c62' },
-  { id: 'suzuki', ja: '鈴木 一郎', en: 'Ichiro Suzuki', role: 'MEMBER', storeId: 'shinjuku', hourlyRate: 1280, phone: '', pin: '3456', active: true, color: '#6d6ab7' },
-  { id: 'sato', ja: '佐藤 美咲', en: 'Misaki Sato', role: 'MEMBER', storeId: 'shibuya', hourlyRate: 1350, phone: '080-4567-8901', pin: '4567', active: true, color: '#d66982' },
-  { id: 'takahashi', ja: '高橋 健', en: 'Ken Takahashi', role: 'MEMBER', storeId: 'ikebukuro', hourlyRate: 1320, phone: '', pin: '5678', active: true, color: '#c79036' },
-  { id: 'ito', ja: '伊藤 葵', en: 'Aoi Ito', role: 'MEMBER', storeId: 'shibuya', hourlyRate: 1300, phone: '', pin: '6789', active: true, color: '#4f86a8' },
+  { id: 'tanaka', ja: '田中 太郎', en: 'Taro Tanaka', email: 'tanaka@example.com', status: 'ACTIVE', role: 'MEMBER', storeId: 'shibuya', hourlyRate: 1300, phone: '090-1234-5678', active: true, color: '#2c7b73' },
+  { id: 'yamada', ja: '山田 花子', en: 'Hana Yamada', email: 'yamada@example.com', status: 'ACTIVE', role: 'ADMIN', storeId: 'shibuya', hourlyRate: 1450, phone: '090-2345-6789', active: true, color: '#ef8c62' },
+  { id: 'suzuki', ja: '鈴木 一郎', en: 'Ichiro Suzuki', email: 'suzuki@example.com', status: 'INVITED', role: 'MEMBER', storeId: 'shinjuku', hourlyRate: 1280, phone: '', active: true, color: '#6d6ab7' },
+  { id: 'sato', ja: '佐藤 美咲', en: 'Misaki Sato', email: 'sato@example.com', status: 'ACTIVE', role: 'MEMBER', storeId: 'shibuya', hourlyRate: 1350, phone: '080-4567-8901', active: true, color: '#d66982' },
+  { id: 'takahashi', ja: '高橋 健', en: 'Ken Takahashi', email: 'takahashi@example.com', status: 'ACTIVE', role: 'MEMBER', storeId: 'ikebukuro', hourlyRate: 1320, phone: '', active: true, color: '#c79036' },
+  { id: 'ito', ja: '伊藤 葵', en: 'Aoi Ito', email: 'ito@example.com', status: 'DISABLED', role: 'MEMBER', storeId: 'shibuya', hourlyRate: 1300, phone: '', active: false, color: '#4f86a8' },
 ];
+
+export const featureLabels: Record<FeatureKey, { ja: string; en: string }> = {
+  SHIFT_COLLECTION: { ja: 'シフト収集', en: 'Shift collection' },
+  SCHEDULE: { ja: 'シフト管理', en: 'Schedule' },
+  ATTENDANCE: { ja: '勤怠管理', en: 'Attendance' },
+  OPEN_SHIFTS: { ja: '緊急募集', en: 'Open shifts' },
+  GPS: { ja: 'GPS', en: 'GPS' },
+  ESTIMATED_PAY: { ja: '給与概算', en: 'Estimated pay' },
+};
+
+export const allFeatures = Object.keys(featureLabels) as FeatureKey[];
+
+export type FeatureFlags = Record<FeatureKey, boolean>;
+
+export const defaultAdminEnabledFeatures: FeatureFlags = {
+  SHIFT_COLLECTION: true,
+  SCHEDULE: true,
+  ATTENDANCE: true,
+  OPEN_SHIFTS: true,
+  GPS: true,
+  ESTIMATED_PAY: true,
+};
+
+export function getPlanEntitlements(status: SubscriptionStatus, plan: Plan | null): FeatureFlags {
+  if (status === 'trial') return { ...defaultAdminEnabledFeatures };
+  if (status === 'expired' || !plan) return Object.fromEntries(allFeatures.map((feature) => [feature, false])) as FeatureFlags;
+  if (plan === 'COLLECTION') return {
+    SHIFT_COLLECTION: true,
+    SCHEDULE: false,
+    ATTENDANCE: false,
+    OPEN_SHIFTS: false,
+    GPS: false,
+    ESTIMATED_PAY: false,
+  };
+  return { ...defaultAdminEnabledFeatures };
+}
+
+export function getEffectiveFeatures(entitlements: FeatureFlags, enabled: FeatureFlags): FeatureFlags {
+  return Object.fromEntries(allFeatures.map((feature) => [feature, entitlements[feature] && enabled[feature]])) as FeatureFlags;
+}
+
+export function calculateMonthlyPrice(plan: Plan, activeUsers: number): number {
+  const blocks = Math.max(1, Math.ceil(activeUsers / 100));
+  return blocks * (plan === 'COLLECTION' ? 500 : 4980);
+}
+
+export function userLimitLabel(activeUsers: number): number {
+  return Math.max(100, Math.ceil(activeUsers / 100) * 100);
+}
 
 const dayRows: StaffShift[][] = [
   [
@@ -150,6 +213,8 @@ export const scenarioLabels: Record<Scenario, { ja: string; en: string }> = {
   building: { ja: 'シフト作成中', en: 'Building schedule' },
   working: { ja: '勤務中', en: 'Clocked in' },
   shortage: { ja: '欠員あり', en: 'Staff shortage' },
-  trial: { ja: '無料体験', en: 'Free trial' },
-  paid: { ja: '課金済み', en: 'Subscribed' },
+  trial: { ja: '無料体験中', en: 'Free trial' },
+  expired: { ja: '無料体験終了', en: 'Trial expired' },
+  collectionPlan: { ja: 'シフト収集プラン', en: 'Collection plan' },
+  fullPlan: { ja: '全機能プラン', en: 'Full plan' },
 };
