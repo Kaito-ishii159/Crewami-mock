@@ -285,7 +285,10 @@ function AdminHome(p: ScreenProps) {
         <section className="action-hero">
           <div className="hero-label">
             <CalendarCheck2 />
-            <span>{tx(p.locale, "11月のシフト", "NOVEMBER SCHEDULE")}</span>
+            <span>
+              {monthLabel(p.scheduling.selectedScheduleMonth, p.locale)} ·{" "}
+              {tx(p.locale, "シフト", "SCHEDULE")}
+            </span>
           </div>
           <h3>
             {p.published
@@ -350,7 +353,7 @@ function AdminHome(p: ScreenProps) {
         >
           <CalendarDays />
           <span>
-            <small>{tx(p.locale, "11月シフト", "NOVEMBER")}</small>
+            <small>{monthLabel(p.scheduling.collectionMonth, p.locale)}</small>
             <strong>
               {tx(
                 p.locale,
