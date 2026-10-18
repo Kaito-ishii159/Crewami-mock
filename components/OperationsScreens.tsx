@@ -19,6 +19,7 @@ import {
   type SubscriptionStatus,
 } from '@/lib/prototype';
 import type { ModalState } from './CrewamiPrototype';
+import { monthLabel } from '@/lib/scheduling';
 
 type Navigate = Dispatch<SetStateAction<Screen>>;
 
@@ -55,15 +56,9 @@ export function SubscriptionScreen({ locale, navigate, status, plan, activeUsers
   return <div className="screen"><PageTitle title={tx('プランとお支払い', 'Plan & billing')} back={() => navigate('settings')} /><section className="billing-status"><CreditCard /><div><small>{tx('現在', 'CURRENT')}</small><h3>{label}</h3>{status === 'trial' && <p>{tx('全機能利用可能 · 残り23日', 'All features · 23 days remaining')}</p>}{status === 'expired' && <p>{tx('プランを選ぶと業務機能を再開できます。', 'Choose a plan to resume work features.')}</p>}</div><span><strong>{activeUsers}</strong>{tx('人', ' users')}</span></section><div className="pricing-context"><span>{tx('料金区分', 'Billing tier')}</span><strong>{userLimitLabel(activeUsers)}{tx('名まで', ' users')}</strong><small>ceil({activeUsers} / 100) = {Math.ceil(activeUsers / 100)} blocks</small></div><div className="subscription-plans">{([['COLLECTION', tx('シフト収集プラン', 'Shift Collection Plan'), collectionBenefits], ['FULL', tx('全機能プラン', 'Full Plan'), fullBenefits]] as const).map(([item, name, benefits]) => <button key={item} className={selected === item ? 'subscription-plan selected' : 'subscription-plan'} onClick={() => setSelected(item)}><span className="plan-radio">{selected === item ? <Check /> : null}</span><div><h3>{name}</h3><p>{tx('100名まで', 'Up to 100 users')} · {item === 'COLLECTION' ? '¥500' : '¥4,980'} / {tx('月', 'month')}</p><strong>{tx(`現在${activeUsers}名の場合`, `For ${activeUsers} users`)} <b>{money(calculateMonthlyPrice(item, activeUsers))} / {tx('月', 'month')}</b></strong><ul>{benefits.map((benefit) => <li key={benefit}><Check />{benefit}</li>)}</ul></div></button>)}</div><button className="primary-button full-button" onClick={() => onPurchase(selected)}>{tx('このプランを選ぶ', 'Choose this plan')}</button><p className="prototype-price-note">{tx('モック購入です。実際の決済は発生しません。', 'Mock purchase only. No real charge occurs.')}</p></div>;
 }
 
-const exportRows = [
-  ['田中 太郎', 'tanaka@example.com', '2026-11-01', '勤務可能', '09:00', '18:00'],
-  ['山田 花子', 'yamada@example.com', '2026-11-01', '勤務不可', '', ''],
-  ['佐藤 美咲', 'sato@example.com', '2026-11-02', '勤務可能', '12:00', '20:00'],
-];
-
 function download(name: string, content: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
-  const anchor = document.createElement('a');
+  const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = name;
   anchor.hidden = true;
@@ -73,13 +68,153 @@ function download(name: string, content: string, type: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export function ExportScreen({ locale, navigate, includeConfirmed }: { locale: Locale; navigate: Navigate; includeConfirmed: boolean }) {
+export function ExportScreen({
+  locale,
+  navigate,
+  includeConfirmed,
+  month,
+  exportRows,
+  confirmedRows,
+}: {
+  locale: Locale;
+  navigate: Navigate;
+  includeConfirmed: boolean;
+  month: string;
+  exportRows: string[][];
+  confirmedRows: string[][];
+}) {
   const tx = (ja: string, en: string) => translate(locale, ja, en);
-  const headers = ['スタッフ名', 'メールアドレス', '日付', '希望種別', '開始時刻', '終了時刻'];
-  const csv = [headers, ...exportRows].map((row) => row.map((cell) => `"${cell}"`).join(',')).join('\n');
-  const xmlRows = [headers, ...exportRows].map((row) => `<Row>${row.map((cell) => `<Cell><Data ss:Type="String">${cell}</Data></Cell>`).join('')}</Row>`).join('');
-  const spreadsheet = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="11月希望"><Table>${xmlRows}</Table></Worksheet></Workbook>`;
-  return <div className="screen"><PageTitle title={tx('データをダウンロード', 'Download data')} subtitle={tx('11月 シフト希望データ', 'November availability data')} back={() => navigate('collection')} /><div className="export-preview"><FileSpreadsheet /><div><strong>{tx('出力項目', 'Export fields')}</strong><p>{headers.join(' · ')}</p></div></div><div className="export-actions"><button onClick={() => download('crewami-availability-2026-11.csv', `\uFEFF${csv}`, 'text/csv;charset=utf-8')}><Download /><span><strong>CSV</strong><small>{tx('CSVをダウンロード', 'Download CSV')}</small></span></button><button onClick={() => download('crewami-availability-2026-11.xls', spreadsheet, 'application/vnd.ms-excel')}><Download /><span><strong>Excel</strong><small>{tx('Excelをダウンロード', 'Download Excel')}</small></span></button></div>{includeConfirmed && <div className="form-note"><Check /><p>{tx('全機能プランでは確定シフトデータも出力対象にできます。', 'The Full plan can also export confirmed shifts.')}</p></div>}<button className="custom-integration-card" onClick={() => navigate('customIntegration')}><Upload /><span><strong>{tx('今使っているシフト表へ連携したい', 'Connect my current shift sheet')}</strong><small>{tx('Excel・CSV形式に合わせた専用連携を作成できます', 'We can build an integration for your Excel or CSV format')}</small><b>{tx('個別見積もり', 'Custom quote')}</b></span><ChevronRight /></button></div>;
+  const [withConfirmed, setWithConfirmed] = useState(false);
+  const [downloaded, setDownloaded] = useState("");
+  const rows =
+    withConfirmed && includeConfirmed
+      ? [...exportRows, ...confirmedRows]
+      : exportRows;
+  const xmlEscape = (text: string) =>
+    text
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  const headers = [
+    "スタッフ名",
+    "メールアドレス",
+    "日付",
+    "希望種別",
+    "開始時刻",
+    "終了時刻",
+  ];
+  const csv = [headers, ...rows]
+    .map((row) =>
+      row
+        .map(
+          (cell) =>
+            `"${(/^[=+@-]/.test(cell) ? `'${cell}` : cell).replaceAll('"', '""')}"`,
+        )
+        .join(","),
+    )
+    .join("\n");
+  const xmlRows = [headers, ...rows]
+    .map(
+      (row) =>
+        `<Row>${row.map((cell) => `<Cell><Data ss:Type="String">${xmlEscape(cell)}</Data></Cell>`).join("")}</Row>`,
+    )
+    .join("");
+  const spreadsheet = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="${month}"><Table>${xmlRows}</Table></Worksheet></Workbook>`;
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx("データをダウンロード", "Download data")}
+        subtitle={`${monthLabel(month, locale)} ${tx("シフト希望データ", "availability data")}`}
+        back={() => navigate("collection")}
+      />
+      <div className="export-preview">
+        <FileSpreadsheet />
+        <div>
+          <strong>{tx("出力項目", "Export fields")}</strong>
+          <p>{headers.join(" · ")}</p>
+        </div>
+      </div>
+      <p className="export-count">
+        {rows.length}{" "}
+        {tx("行 · 1時間帯につき1行で出力", "rows · one row per time range")}
+      </p>
+      <div className="export-actions">
+        <button
+          onClick={() => {
+            download(
+              `crewami-availability-${month}.csv`,
+              `\uFEFF${csv}`,
+              "text/csv;charset=utf-8",
+            );
+            setDownloaded("CSV");
+          }}
+        >
+          <Download />
+          <span>
+            <strong>CSV</strong>
+            <small>{tx("CSVをダウンロード", "Download CSV")}</small>
+          </span>
+        </button>
+        <button
+          onClick={() => {
+            download(
+              `crewami-availability-${month}.xls`,
+              spreadsheet,
+              "application/vnd.ms-excel",
+            );
+            setDownloaded("Excel");
+          }}
+        >
+          <Download />
+          <span>
+            <strong>Excel</strong>
+            <small>{tx("Excelをダウンロード", "Download Excel")}</small>
+          </span>
+        </button>
+      </div>
+      {includeConfirmed && (
+        <label className="export-confirmed">
+          <input
+            type="checkbox"
+            checked={withConfirmed}
+            onChange={(event) => setWithConfirmed(event.target.checked)}
+          />
+          {tx("確定シフトデータも含める", "Include confirmed shifts")}
+        </label>
+      )}
+      {downloaded && (
+        <p className="result-banner" role="status">
+          {tx(
+            `${downloaded}のダウンロードを開始しました`,
+            `${downloaded} download started`,
+          )}
+        </p>
+      )}
+      <button
+        className="custom-integration-card"
+        onClick={() => navigate("customIntegration")}
+      >
+        <Upload />
+        <span>
+          <strong>
+            {tx(
+              "今使っているシフト表へ連携したい",
+              "Connect my current shift sheet",
+            )}
+          </strong>
+          <small>
+            {tx(
+              "Excel・CSV形式に合わせた専用連携を作成できます",
+              "We can build an integration for your Excel or CSV format",
+            )}
+          </small>
+          <b>{tx("個別見積もり", "Custom quote")}</b>
+        </span>
+        <ChevronRight />
+      </button>
+    </div>
+  );
 }
 
 export type CustomOrderStatus = 'draft' | 'quoted' | 'accepted' | 'paid';
