@@ -1,111 +1,1980 @@
-'use client';
+"use client";
 
-import { useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
-import { ArrowLeft, ArrowRight, BellRing, BriefcaseBusiness, Building2, CalendarCheck2, CalendarDays, Check, ChevronRight, CircleDollarSign, Clock3, CreditCard, FilePenLine, Languages, LockKeyhole, LogOut, Mail, MapPin, MapPinned, MessageCircleMore, Navigation, Plus, ReceiptText, Search, Send, ShieldCheck, Smartphone, Store, UsersRound, WalletCards } from 'lucide-react';
-import { translate, type AttendanceState, type FeatureFlags, type Locale, type Plan, type Role, type Scenario, type Screen, type ShiftDay, type StaffRecord, type StoreRecord, type SubscriptionStatus } from '@/lib/prototype';
-import type { ModalState } from './CrewamiPrototype';
-import { ScheduleTimeline } from './ScheduleTimeline';
-import { AttendanceDetailScreen, CustomIntegrationScreen, CustomQuoteScreen, ExpiredScreen, ExportScreen, FeatureSettingsScreen, KioskScreen, PayrollScreen, SubscriptionScreen, type AuditEntry, type CustomOrderStatus } from './OperationsScreens';
+import {
+  useState,
+  type Dispatch,
+  type FormEvent,
+  type SetStateAction,
+} from "react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BellRing,
+  BriefcaseBusiness,
+  Building2,
+  CalendarCheck2,
+  CalendarDays,
+  Check,
+  ChevronRight,
+  CircleDollarSign,
+  Clock3,
+  CreditCard,
+  FilePenLine,
+  Languages,
+  LockKeyhole,
+  LogOut,
+  Mail,
+  MapPin,
+  MapPinned,
+  MessageCircleMore,
+  Navigation,
+  Plus,
+  ReceiptText,
+  Search,
+  Send,
+  ShieldCheck,
+  Smartphone,
+  Store,
+  UsersRound,
+  WalletCards,
+} from "lucide-react";
+import {
+  translate,
+  type AttendanceState,
+  type FeatureFlags,
+  type Locale,
+  type Plan,
+  type Role,
+  type Scenario,
+  type Screen,
+  type StaffRecord,
+  type StoreRecord,
+  type SubscriptionStatus,
+} from "@/lib/prototype";
+import type { ModalState } from "./CrewamiPrototype";
+import { ScheduleTimeline } from "./ScheduleTimeline";
+import { AvailabilityCalendar } from "./AvailabilityCalendar";
+import type { SchedulingState } from "./useScheduling";
+import { createStoreCode, type AuthenticatedAccount } from "@/lib/accounts";
+import { availabilityExportRows, monthLabel } from "@/lib/scheduling";
+import {
+  AttendanceDetailScreen,
+  CustomIntegrationScreen,
+  CustomQuoteScreen,
+  ExpiredScreen,
+  ExportScreen,
+  FeatureSettingsScreen,
+  KioskScreen,
+  PayrollScreen,
+  SubscriptionScreen,
+  type AuditEntry,
+  type CustomOrderStatus,
+} from "./OperationsScreens";
 
 export interface ScreenProps {
-  role: Role; locale: Locale; scenario: Scenario; screen: Screen; storeId: string;
-  stores: StoreRecord[]; setStores: Dispatch<SetStateAction<StoreRecord[]>>;
-  staff: StaffRecord[]; setStaff: Dispatch<SetStateAction<StaffRecord[]>>;
-  shiftDays: ShiftDay[]; setShiftDays: Dispatch<SetStateAction<ShiftDay[]>>;
-  selectedStaffId: string; setSelectedStaffId: Dispatch<SetStateAction<string>>;
-  editingStaffId: string | null; setEditingStaffId: Dispatch<SetStateAction<string | null>>;
-  editingStoreId: string | null; setEditingStoreId: Dispatch<SetStateAction<string | null>>;
-  attendance: AttendanceState; setAttendance: Dispatch<SetStateAction<AttendanceState>>;
-  gpsSharing: boolean; setGpsSharing: Dispatch<SetStateAction<boolean>>;
-  published: boolean; setPublished: Dispatch<SetStateAction<boolean>>;
-  availabilitySubmitted: boolean; setAvailabilitySubmitted: Dispatch<SetStateAction<boolean>>;
-  collectionActive: boolean; setCollectionActive: Dispatch<SetStateAction<boolean>>;
-  notifications: { shift: boolean; attendance: boolean; recruitment: boolean }; setNotifications: Dispatch<SetStateAction<{ shift: boolean; attendance: boolean; recruitment: boolean }>>;
-  setLocale: Dispatch<SetStateAction<Locale>>; navigate: Dispatch<SetStateAction<Screen>>; openModal: Dispatch<SetStateAction<ModalState>>;
-  subscriptionStatus: SubscriptionStatus; plan: Plan | null; activeUsers: number;
-  entitlements: FeatureFlags; effectiveFeatures: FeatureFlags; adminEnabledFeatures: FeatureFlags; setAdminEnabledFeatures: Dispatch<SetStateAction<FeatureFlags>>;
-  purchasePlan: (plan: Plan) => void; customOrderStatus: CustomOrderStatus; setCustomOrderStatus: Dispatch<SetStateAction<CustomOrderStatus>>;
-  attendanceAudits: AuditEntry[]; setAttendanceAudits: Dispatch<SetStateAction<AuditEntry[]>>;
+  role: Role;
+  locale: Locale;
+  scenario: Scenario;
+  screen: Screen;
+  storeId: string;
+  stores: StoreRecord[];
+  setStores: Dispatch<SetStateAction<StoreRecord[]>>;
+  staff: StaffRecord[];
+  allStaff: StaffRecord[];
+  setStaff: Dispatch<SetStateAction<StaffRecord[]>>;
+  scheduling: SchedulingState;
+  currentStaffId: string;
+  authenticatedAccount: AuthenticatedAccount;
+  previewInvitation: (staffId: string) => void;
+  selectedStaffId: string;
+  setSelectedStaffId: Dispatch<SetStateAction<string>>;
+  editingStaffId: string | null;
+  setEditingStaffId: Dispatch<SetStateAction<string | null>>;
+  editingStoreId: string | null;
+  setEditingStoreId: Dispatch<SetStateAction<string | null>>;
+  attendance: AttendanceState;
+  setAttendance: Dispatch<SetStateAction<AttendanceState>>;
+  gpsSharing: boolean;
+  setGpsSharing: Dispatch<SetStateAction<boolean>>;
+  published: boolean;
+  setPublished: Dispatch<SetStateAction<boolean>>;
+  collectionActive: boolean;
+  setCollectionActive: Dispatch<SetStateAction<boolean>>;
+  notifications: { shift: boolean; attendance: boolean; recruitment: boolean };
+  setNotifications: Dispatch<
+    SetStateAction<{
+      shift: boolean;
+      attendance: boolean;
+      recruitment: boolean;
+    }>
+  >;
+  setLocale: Dispatch<SetStateAction<Locale>>;
+  navigate: Dispatch<SetStateAction<Screen>>;
+  openModal: Dispatch<SetStateAction<ModalState>>;
+  subscriptionStatus: SubscriptionStatus;
+  plan: Plan | null;
+  activeUsers: number;
+  entitlements: FeatureFlags;
+  effectiveFeatures: FeatureFlags;
+  adminEnabledFeatures: FeatureFlags;
+  setAdminEnabledFeatures: Dispatch<SetStateAction<FeatureFlags>>;
+  purchasePlan: (plan: Plan) => void;
+  customOrderStatus: CustomOrderStatus;
+  setCustomOrderStatus: Dispatch<SetStateAction<CustomOrderStatus>>;
+  attendanceAudits: AuditEntry[];
+  setAttendanceAudits: Dispatch<SetStateAction<AuditEntry[]>>;
   logout: () => void;
 }
 
-const statusCopy = { INVITED: ['招待中', 'Invited'], ACTIVE: ['利用中', 'Active'], DISABLED: ['無効', 'Disabled'] } as const;
-function tx(locale: Locale, ja: string, en: string) { return translate(locale, ja, en); }
-function PageTitle({ title, subtitle, onBack, action }: { title: string; subtitle?: string; onBack?: () => void; action?: React.ReactNode }) { return <div className="page-title">{onBack && <button className="back-button" onClick={onBack} aria-label="Back"><ArrowLeft /></button>}<div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action && <div className="page-title-action">{action}</div>}</div>; }
-function Avatar({ person, small = false }: { person: StaffRecord; small?: boolean }) { return <span className={small ? 'avatar avatar--small' : 'avatar'} style={{ background: person.color }}>{person.ja.replace(' ', '').slice(0, 2)}</span>; }
-function Pill({ tone = 'mint', children }: { tone?: 'mint' | 'orange' | 'gray' | 'red'; children: React.ReactNode }) { return <span className={`status-pill status-pill--${tone}`}>{children}</span>; }
-function SectionHead({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) { return <div className="section-head"><h3>{title}</h3>{action && onAction && <button onClick={onAction}>{action}<ChevronRight /></button>}</div>; }
+const statusCopy = {
+  INVITED: ["招待中", "Invited"],
+  ACTIVE: ["利用中", "Active"],
+  DISABLED: ["無効", "Disabled"],
+} as const;
+function tx(locale: Locale, ja: string, en: string) {
+  return translate(locale, ja, en);
+}
+function PageTitle({
+  title,
+  subtitle,
+  onBack,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  onBack?: () => void;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="page-title">
+      {onBack && (
+        <button className="back-button" onClick={onBack} aria-label="Back">
+          <ArrowLeft />
+        </button>
+      )}
+      <div>
+        <h2>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+      {action && <div className="page-title-action">{action}</div>}
+    </div>
+  );
+}
+function Avatar({
+  person,
+  small = false,
+}: {
+  person: StaffRecord;
+  small?: boolean;
+}) {
+  return (
+    <span
+      className={small ? "avatar avatar--small" : "avatar"}
+      style={{ background: person.color }}
+    >
+      {person.ja.replace(" ", "").slice(0, 2)}
+    </span>
+  );
+}
+function Pill({
+  tone = "mint",
+  children,
+}: {
+  tone?: "mint" | "orange" | "gray" | "red";
+  children: React.ReactNode;
+}) {
+  return <span className={`status-pill status-pill--${tone}`}>{children}</span>;
+}
+function SectionHead({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="section-head">
+      <h3>{title}</h3>
+      {action && onAction && (
+        <button onClick={onAction}>
+          {action}
+          <ChevronRight />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function OwnAvailabilityCard(p: ScreenProps) {
+  const submission =
+    p.scheduling.submissions[p.currentStaffId]?.[p.scheduling.collectionMonth];
+  return (
+    <section
+      className={`own-availability-card ${submission ? "is-submitted" : ""}`}
+    >
+      <div>
+        <CalendarDays />
+        <span>
+          <small>{monthLabel(p.scheduling.collectionMonth, p.locale)}</small>
+          <strong>{tx(p.locale, "自分のシフト希望", "My availability")}</strong>
+        </span>
+        <span className="status-pill status-pill--mint">
+          {submission
+            ? tx(p.locale, "提出済み ✓", "Submitted ✓")
+            : tx(p.locale, "未提出", "Not submitted")}
+        </span>
+      </div>
+      <p>
+        {submission
+          ? `${tx(p.locale, "最終更新", "Updated")} ${new Date(submission.at).toLocaleString(p.locale === "ja" ? "ja-JP" : "en-US")}`
+          : `${tx(p.locale, "締切", "Due")} ${p.scheduling.deadline}`}
+      </p>
+      <button
+        className="secondary-button"
+        onClick={() => p.navigate("availability")}
+      >
+        {submission
+          ? tx(p.locale, "内容を見る・修正", "Review or edit")
+          : tx(p.locale, "自分の希望を入力", "Enter my availability")}
+        <ChevronRight />
+      </button>
+    </section>
+  );
+}
 
 function AdminHome(p: ScreenProps) {
   const f = p.effectiveFeatures;
+  const active = p.staff.filter((person) => person.status !== "DISABLED");
+  const count = active.filter(
+    (person) =>
+      p.scheduling.submissions[person.id]?.[p.scheduling.collectionMonth],
+  ).length;
   const quick = [
-    f.SHIFT_COLLECTION && [CalendarDays, tx(p.locale, 'シフト収集', 'Shift collection'), '8 / 12', 'collection'],
-    f.OPEN_SHIFTS && [BriefcaseBusiness, tx(p.locale, '緊急募集', 'Open shifts'), tx(p.locale, '応募 2件', '2 applicants'), 'openShifts'],
-    f.GPS && [MapPinned, 'GPS', tx(p.locale, '共有 3人', '3 sharing'), 'gps'],
-    f.ESTIMATED_PAY && [CircleDollarSign, tx(p.locale, '給与概算', 'Estimated pay'), '¥107,250', 'payroll'],
+    f.SHIFT_COLLECTION && [
+      CalendarDays,
+      tx(p.locale, "シフト収集", "Shift collection"),
+      `${count} / ${active.length}`,
+      "collection",
+    ],
+    f.OPEN_SHIFTS && [
+      BriefcaseBusiness,
+      tx(p.locale, "緊急募集", "Open shifts"),
+      tx(p.locale, "応募 2件", "2 applicants"),
+      "openShifts",
+    ],
+    f.GPS && [MapPinned, "GPS", tx(p.locale, "共有 3人", "3 sharing"), "gps"],
+    f.ESTIMATED_PAY && [
+      CircleDollarSign,
+      tx(p.locale, "給与概算", "Estimated pay"),
+      "¥107,250",
+      "payroll",
+    ],
   ].filter(Boolean) as Array<[typeof CalendarDays, string, string, Screen]>;
-  return <div className="screen"><div className="greeting-row"><div><p className="overline">WEDNESDAY · OCT 14</p><h2>{tx(p.locale, 'お疲れさまです', 'Welcome back')}</h2></div><span className="avatar">管理</span></div>{f.SCHEDULE ? <section className="action-hero"><div className="hero-label"><CalendarCheck2 /><span>{tx(p.locale, '11月のシフト', 'NOVEMBER SCHEDULE')}</span></div><h3>{p.published ? tx(p.locale, 'シフトは公開済みです', 'Schedule published') : tx(p.locale, '公開まで、あと2ステップ', 'Two steps until ready')}</h3><div className="workflow-steps">{f.SHIFT_COLLECTION && <><button className="workflow-step complete" onClick={() => p.navigate('collection')}><span className="step-index"><Check /></span><span><small>{tx(p.locale, '希望収集', 'Collect')}</small><strong>8 / 12</strong></span></button><span className="workflow-line complete" /></>}<button className="workflow-step active" onClick={() => p.navigate('builder')}><span className="step-index">2</span><span><small>{tx(p.locale, 'シフト作成', 'Build')}</small><strong>3 / 6</strong></span></button><span className="workflow-line" /><button className="workflow-step" onClick={() => p.navigate('publish')}><span className="step-index">3</span><span><small>{tx(p.locale, '公開', 'Publish')}</small><strong>{tx(p.locale, '未公開', 'Draft')}</strong></span></button></div><button className="hero-cta" onClick={() => p.navigate('builder')}>{tx(p.locale, 'シフト作成を続ける', 'Continue building')}<ArrowRight /></button></section> : f.SHIFT_COLLECTION ? <button className="collection-hero" onClick={() => p.navigate('collection')}><CalendarDays /><span><small>{tx(p.locale, '11月シフト', 'NOVEMBER')}</small><strong>{tx(p.locale, '希望提出 8 / 12', '8 / 12 submitted')}</strong><p>{tx(p.locale, '未提出者へ通知できます', 'Remind pending members')}</p></span><ChevronRight /></button> : null}{f.ATTENDANCE && <><SectionHead title={tx(p.locale, '今日の勤怠', 'Today’s attendance')} action={tx(p.locale, '管理する', 'Manage')} onAction={() => p.navigate('teamAttendance')} /><button className="team-summary card-button" onClick={() => p.navigate('teamAttendance')}><span><i className="dot dot--green" /><strong>4</strong><small>{tx(p.locale, '勤務中', 'Working')}</small></span><span><i className="dot dot--orange" /><strong>1</strong><small>{tx(p.locale, '休憩中', 'Break')}</small></span><span><i className="dot dot--gray" /><strong>2</strong><small>{tx(p.locale, '未出勤', 'Not in')}</small></span></button></>}<div className="quick-grid">{quick.map(([Icon, label, sub, target]) => <button key={target} onClick={() => p.navigate(target)}><Icon /><span><strong>{label}</strong><small>{sub}</small></span><ChevronRight /></button>)}</div></div>;
+  return (
+    <div className="screen">
+      <div className="greeting-row">
+        <div>
+          <p className="overline">WEDNESDAY · OCT 14</p>
+          <h2>{tx(p.locale, "お疲れさまです", "Welcome back")}</h2>
+        </div>
+        <span className="avatar">管理</span>
+      </div>
+      {f.SCHEDULE ? (
+        <section className="action-hero">
+          <div className="hero-label">
+            <CalendarCheck2 />
+            <span>
+              {monthLabel(p.scheduling.selectedScheduleMonth, p.locale)} ·{" "}
+              {tx(p.locale, "シフト", "SCHEDULE")}
+            </span>
+          </div>
+          <h3>
+            {p.published
+              ? tx(p.locale, "シフトは公開済みです", "Schedule published")
+              : tx(
+                  p.locale,
+                  "公開まで、あと2ステップ",
+                  "Two steps until ready",
+                )}
+          </h3>
+          <div className="workflow-steps">
+            {f.SHIFT_COLLECTION && (
+              <>
+                <button
+                  className="workflow-step complete"
+                  onClick={() => p.navigate("collection")}
+                >
+                  <span className="step-index">
+                    <Check />
+                  </span>
+                  <span>
+                    <small>{tx(p.locale, "希望収集", "Collect")}</small>
+                    <strong>
+                      {count} / {active.length}
+                    </strong>
+                  </span>
+                </button>
+                <span className="workflow-line complete" />
+              </>
+            )}
+            <button
+              className="workflow-step active"
+              onClick={() => p.navigate("builder")}
+            >
+              <span className="step-index">2</span>
+              <span>
+                <small>{tx(p.locale, "シフト作成", "Build")}</small>
+                <strong>3 / 6</strong>
+              </span>
+            </button>
+            <span className="workflow-line" />
+            <button
+              className="workflow-step"
+              onClick={() => p.navigate("publish")}
+            >
+              <span className="step-index">3</span>
+              <span>
+                <small>{tx(p.locale, "公開", "Publish")}</small>
+                <strong>{tx(p.locale, "未公開", "Draft")}</strong>
+              </span>
+            </button>
+          </div>
+          <button className="hero-cta" onClick={() => p.navigate("builder")}>
+            {tx(p.locale, "シフト作成を続ける", "Continue building")}
+            <ArrowRight />
+          </button>
+        </section>
+      ) : f.SHIFT_COLLECTION ? (
+        <button
+          className="collection-hero"
+          onClick={() => p.navigate("collection")}
+        >
+          <CalendarDays />
+          <span>
+            <small>{monthLabel(p.scheduling.collectionMonth, p.locale)}</small>
+            <strong>
+              {tx(
+                p.locale,
+                `希望提出 ${count} / ${active.length}`,
+                `${count} / ${active.length} submitted`,
+              )}
+            </strong>
+            <p>
+              {tx(p.locale, "未提出者へ通知できます", "Remind pending members")}
+            </p>
+          </span>
+          <ChevronRight />
+        </button>
+      ) : null}
+      {f.SHIFT_COLLECTION && <OwnAvailabilityCard {...p} />}
+      {f.ATTENDANCE && (
+        <>
+          <SectionHead
+            title={tx(p.locale, "今日の勤怠", "Today’s attendance")}
+            action={tx(p.locale, "管理する", "Manage")}
+            onAction={() => p.navigate("teamAttendance")}
+          />
+          <button
+            className="team-summary card-button"
+            onClick={() => p.navigate("teamAttendance")}
+          >
+            <span>
+              <i className="dot dot--green" />
+              <strong>4</strong>
+              <small>{tx(p.locale, "勤務中", "Working")}</small>
+            </span>
+            <span>
+              <i className="dot dot--orange" />
+              <strong>1</strong>
+              <small>{tx(p.locale, "休憩中", "Break")}</small>
+            </span>
+            <span>
+              <i className="dot dot--gray" />
+              <strong>2</strong>
+              <small>{tx(p.locale, "未出勤", "Not in")}</small>
+            </span>
+          </button>
+        </>
+      )}
+      <div className="quick-grid">
+        {quick.map(([Icon, label, sub, target]) => (
+          <button key={target} onClick={() => p.navigate(target)}>
+            <Icon />
+            <span>
+              <strong>{label}</strong>
+              <small>{sub}</small>
+            </span>
+            <ChevronRight />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-function MemberHome(p: ScreenProps) { const f = p.effectiveFeatures; return <div className="screen"><div className="greeting-row"><div><p className="overline">WEDNESDAY · OCT 14</p><h2>{tx(p.locale, '今日もよろしくお願いします', 'Have a great day')}</h2></div><span className="avatar">田</span></div>{f.SHIFT_COLLECTION && <section className={p.availabilitySubmitted ? 'availability-callout complete-card' : 'availability-callout'}><CalendarDays /><div><strong>{p.availabilitySubmitted ? tx(p.locale, '11月の希望を提出済み', 'November availability submitted') : tx(p.locale, '11月のシフト希望を提出してください', 'Submit November availability')}</strong><p>{p.availabilitySubmitted ? tx(p.locale, '最終更新 10月18日 20:12', 'Updated Oct 18, 20:12') : tx(p.locale, '締切 10月25日', 'Due Oct 25')}</p></div><button onClick={() => p.navigate('availability')}>{p.availabilitySubmitted ? tx(p.locale, '確認・修正', 'Review') : tx(p.locale, '入力', 'Enter')}</button></section>}{f.ATTENDANCE && <button className="today-shift" onClick={() => p.navigate('attendance')}><div className="today-date"><strong>14</strong><small>OCT</small></div><div><span className="eyebrow">{tx(p.locale, '今日の勤務', 'TODAY')}</span><h3>09:00 — 18:00</h3><p>{tx(p.locale, '渋谷店 · 休憩1時間', 'Shibuya · 1h break')}</p></div><ChevronRight /></button>}{f.SCHEDULE && <button className="summary-row" onClick={() => p.navigate('schedule')}><span><strong>{tx(p.locale, '確定シフトを見る', 'View confirmed schedule')}</strong><small>{tx(p.locale, '次回 10月16日 17:00', 'Next Oct 16, 17:00')}</small></span><ChevronRight /></button>}<div className="member-actions">{f.OPEN_SHIFTS && <button onClick={() => p.navigate('openShifts')}><BriefcaseBusiness /><span>{tx(p.locale, '緊急募集', 'Open shifts')}</span><b>3</b></button>}{f.GPS && <button onClick={() => p.navigate('gps')}><Navigation /><span>GPS</span><small>{tx(p.locale, '任意', 'Optional')}</small></button>}{f.ESTIMATED_PAY && <button onClick={() => p.navigate('payroll')}><WalletCards /><span>{tx(p.locale, '給与概算', 'Estimated pay')}</span><ChevronRight /></button>}</div></div>; }
+function MemberHome(p: ScreenProps) {
+  const f = p.effectiveFeatures;
+  return (
+    <div className="screen">
+      <div className="greeting-row">
+        <div>
+          <p className="overline">WEDNESDAY · OCT 14</p>
+          <h2>
+            {tx(p.locale, "今日もよろしくお願いします", "Have a great day")}
+          </h2>
+        </div>
+        <span className="avatar">田</span>
+      </div>
+      {f.SHIFT_COLLECTION && <OwnAvailabilityCard {...p} />}
+      {f.ATTENDANCE && (
+        <button
+          className="today-shift"
+          onClick={() => p.navigate("attendance")}
+        >
+          <div className="today-date">
+            <strong>14</strong>
+            <small>OCT</small>
+          </div>
+          <div>
+            <span className="eyebrow">
+              {tx(p.locale, "今日の勤務", "TODAY")}
+            </span>
+            <h3>09:00 — 18:00</h3>
+            <p>
+              {p.stores.find((store) => store.id === p.storeId)?.[p.locale]} ·{" "}
+              {tx(p.locale, "休憩1時間", "1h break")}
+            </p>
+          </div>
+          <ChevronRight />
+        </button>
+      )}
+      {f.SCHEDULE && (
+        <button className="summary-row" onClick={() => p.navigate("schedule")}>
+          <span>
+            <strong>
+              {tx(p.locale, "確定シフトを見る", "View confirmed schedule")}
+            </strong>
+            <small>
+              {tx(p.locale, "次回 10月16日 17:00", "Next Oct 16, 17:00")}
+            </small>
+          </span>
+          <ChevronRight />
+        </button>
+      )}
+      <div className="member-actions">
+        {f.OPEN_SHIFTS && (
+          <button onClick={() => p.navigate("openShifts")}>
+            <BriefcaseBusiness />
+            <span>{tx(p.locale, "緊急募集", "Open shifts")}</span>
+            <b>3</b>
+          </button>
+        )}
+        {f.GPS && (
+          <button onClick={() => p.navigate("gps")}>
+            <Navigation />
+            <span>GPS</span>
+            <small>{tx(p.locale, "任意", "Optional")}</small>
+          </button>
+        )}
+        {f.ESTIMATED_PAY && (
+          <button onClick={() => p.navigate("payroll")}>
+            <WalletCards />
+            <span>{tx(p.locale, "給与概算", "Estimated pay")}</span>
+            <ChevronRight />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
-function CollectionScreen(p: ScreenProps) { const [reminded, setReminded] = useState<string[]>([]); const active = p.staff.filter((s) => s.status !== 'DISABLED'); const submitted = active.slice(0, 4); const pending = active.slice(4); if (!p.collectionActive) return <div className="screen"><PageTitle title={tx(p.locale, 'シフト希望収集', 'Shift collection')} onBack={() => p.navigate('home')} /><div className="empty-state"><CalendarDays /><h3>{tx(p.locale, '進行中の募集はありません', 'No active collection')}</h3><button className="primary-button" onClick={() => p.navigate('availabilityRequest')}>{tx(p.locale, 'シフト希望を集める', 'Start collection')}</button></div></div>; return <div className="screen"><PageTitle title={tx(p.locale, '11月シフト', 'November shifts')} subtitle={tx(p.locale, '提出期限 10月25日', 'Due Oct 25')} onBack={() => p.navigate('home')} action={<button className="text-button" onClick={() => p.navigate('availabilityRequest')}>{tx(p.locale, '新規', 'New')}</button>} /><div className="progress-card"><div><span>{tx(p.locale, '提出済み', 'Submitted')}</span><strong>4 / {active.length}</strong></div><div className="progress-track"><i style={{ width: '67%' }} /></div></div><div className="inline-actions"><button onClick={() => p.navigate('export')}><ReceiptText />{tx(p.locale, 'データをダウンロード', 'Download data')}</button><button onClick={() => { setReminded(pending.map((s) => s.id)); p.openModal({ type: 'success', title: tx(p.locale, '通知しました', 'Reminders sent'), body: tx(p.locale, `未提出者${pending.length}名に通知しました。`, `Notified ${pending.length} members.`) }); }}><Send />{tx(p.locale, `未提出者${pending.length}名に通知`, `Remind ${pending.length}`)}</button></div><div className="list-card">{[...submitted, ...pending].map((person) => { const done = submitted.some((s) => s.id === person.id); return <div className="person-row" key={person.id}><Avatar person={person} small /><span><strong>{person[p.locale]}</strong><small>{person.email}</small></span>{done ? <Pill><Check />{tx(p.locale, '提出済み', 'Submitted')}</Pill> : <button className="mini-button" disabled={reminded.includes(person.id)} onClick={() => setReminded((items) => [...items, person.id])}>{reminded.includes(person.id) ? tx(p.locale, '通知済み', 'Sent') : tx(p.locale, '再通知', 'Remind')}</button>}</div>; })}</div><button className="custom-integration-card" onClick={() => p.navigate('customIntegration')}><FilePenLine /><span><strong>{tx(p.locale, '今使っているシフト表へ連携したい', 'Connect your current shift sheet')}</strong><small>{tx(p.locale, 'Excel・CSV形式に合わせた専用連携', 'Custom Excel or CSV integration')}</small><b>{tx(p.locale, '個別見積もり', 'Custom quote')}</b></span><ChevronRight /></button><button className="secondary-button full-button" onClick={() => p.setCollectionActive(false)}>{tx(p.locale, 'この募集を終了', 'Close collection')}</button></div>; }
+function CollectionScreen(p: ScreenProps) {
+  const [reminded, setReminded] = useState<string[]>([]);
+  const active = p.staff.filter((s) => s.status !== "DISABLED");
+  const submitted = active.filter(
+    (person) =>
+      p.scheduling.submissions[person.id]?.[p.scheduling.collectionMonth],
+  );
+  const pending = active.filter(
+    (person) =>
+      !p.scheduling.submissions[person.id]?.[p.scheduling.collectionMonth],
+  );
+  if (!p.collectionActive)
+    return (
+      <div className="screen">
+        <PageTitle
+          title={tx(p.locale, "シフト希望収集", "Shift collection")}
+          onBack={() => p.navigate("home")}
+        />
+        <div className="empty-state">
+          <CalendarDays />
+          <h3>
+            {tx(p.locale, "進行中の募集はありません", "No active collection")}
+          </h3>
+          <button
+            className="primary-button"
+            onClick={() => p.navigate("availabilityRequest")}
+          >
+            {tx(p.locale, "シフト希望を集める", "Start collection")}
+          </button>
+        </div>
+      </div>
+    );
+  return (
+    <div className="screen">
+      <PageTitle
+        title={monthLabel(p.scheduling.collectionMonth, p.locale)}
+        subtitle={`${tx(p.locale, "提出期限", "Due")} ${p.scheduling.deadline}`}
+        onBack={() => p.navigate("home")}
+        action={
+          <button
+            className="text-button"
+            onClick={() => p.navigate("availabilityRequest")}
+          >
+            {tx(p.locale, "新規", "New")}
+          </button>
+        }
+      />
+      <OwnAvailabilityCard {...p} />
+      <div className="progress-card">
+        <div>
+          <span>{tx(p.locale, "提出済み", "Submitted")}</span>
+          <strong>
+            {submitted.length} / {active.length}
+          </strong>
+        </div>
+        <div className="progress-track">
+          <i
+            style={{
+              width: `${active.length ? (submitted.length / active.length) * 100 : 0}%`,
+            }}
+          />
+        </div>
+      </div>
+      <div className="inline-actions">
+        <button onClick={() => p.navigate("export")}>
+          <ReceiptText />
+          {tx(p.locale, "データをダウンロード", "Download data")}
+        </button>
+        <button
+          onClick={() => {
+            setReminded(pending.map((s) => s.id));
+            p.openModal({
+              type: "success",
+              title: tx(p.locale, "通知しました", "Reminders sent"),
+              body: tx(
+                p.locale,
+                `未提出者${pending.length}名に通知しました。`,
+                `Notified ${pending.length} members.`,
+              ),
+            });
+          }}
+        >
+          <Send />
+          {tx(
+            p.locale,
+            `未提出者${pending.length}名に通知`,
+            `Remind ${pending.length}`,
+          )}
+        </button>
+      </div>
+      <div className="list-card">
+        {[...submitted, ...pending].map((person) => {
+          const done = submitted.some((s) => s.id === person.id);
+          return (
+            <div className="person-row" key={person.id}>
+              <Avatar person={person} small />
+              <span>
+                <strong>{person[p.locale]}</strong>
+                <small>
+                  {person.role === "ADMIN"
+                    ? tx(p.locale, "管理者", "Admin")
+                    : tx(p.locale, "メンバー", "Member")}{" "}
+                  · {person.email}
+                </small>
+              </span>
+              {done ? (
+                <Pill>
+                  <Check />
+                  {tx(p.locale, "提出済み", "Submitted")}
+                </Pill>
+              ) : (
+                <button
+                  className="mini-button"
+                  disabled={reminded.includes(person.id)}
+                  onClick={() => setReminded((items) => [...items, person.id])}
+                >
+                  {reminded.includes(person.id)
+                    ? tx(p.locale, "通知済み", "Sent")
+                    : tx(p.locale, "再通知", "Remind")}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <button
+        className="custom-integration-card"
+        onClick={() => p.navigate("customIntegration")}
+      >
+        <FilePenLine />
+        <span>
+          <strong>
+            {tx(
+              p.locale,
+              "今使っているシフト表へ連携したい",
+              "Connect your current shift sheet",
+            )}
+          </strong>
+          <small>
+            {tx(
+              p.locale,
+              "Excel・CSV形式に合わせた専用連携",
+              "Custom Excel or CSV integration",
+            )}
+          </small>
+          <b>{tx(p.locale, "個別見積もり", "Custom quote")}</b>
+        </span>
+        <ChevronRight />
+      </button>
+      <button
+        className="secondary-button full-button"
+        onClick={() => p.setCollectionActive(false)}
+      >
+        {tx(p.locale, "この募集を終了", "Close collection")}
+      </button>
+    </div>
+  );
+}
 
-function AvailabilityRequest(p: ScreenProps) { const [month, setMonth] = useState('2026-11'); const [deadline, setDeadline] = useState('2026-10-25'); return <div className="screen"><PageTitle title={tx(p.locale, 'シフト希望を集める', 'Collect availability')} onBack={() => p.navigate('collection')} /><form className="mock-form" onSubmit={(event) => { event.preventDefault(); p.setCollectionActive(true); p.openModal({ type: 'success', title: tx(p.locale, '募集を開始しました', 'Collection started'), body: tx(p.locale, 'メンバーへアプリ通知を送りました。', 'Members received an app notification.') }); p.navigate('collection'); }}><label><span>{tx(p.locale, '対象', 'Month')}</span><input type="month" value={month} onChange={(event) => setMonth(event.target.value)} /></label><label><span>{tx(p.locale, '提出期限', 'Deadline')}</span><input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label><div className="form-note"><BellRing /><p>{tx(p.locale, '開始するとログイン済みメンバーのホームと通知センターに表示されます。', 'The request appears on member home and in notifications.')}</p></div><button className="primary-button" type="submit">{tx(p.locale, '募集を開始', 'Start collection')}</button></form></div>; }
+function AvailabilityRequest(p: ScreenProps) {
+  const [month, setMonth] = useState(p.scheduling.collectionMonth);
+  const [deadline, setDeadline] = useState(p.scheduling.deadline);
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "シフト希望を集める", "Collect availability")}
+        onBack={() => p.navigate("collection")}
+      />
+      <form
+        className="mock-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          p.scheduling.setCollectionMonth(month);
+          p.scheduling.setDeadline(deadline);
+          p.setCollectionActive(true);
+          p.openModal({
+            type: "success",
+            title: tx(p.locale, "募集を開始しました", "Collection started"),
+            body: tx(
+              p.locale,
+              "メンバーへアプリ通知を送りました。",
+              "Members received an app notification.",
+            ),
+          });
+          p.navigate("collection");
+        }}
+      >
+        <label>
+          <span>{tx(p.locale, "対象", "Month")}</span>
+          <input
+            type="month"
+            required
+            value={month}
+            onInput={(event) => setMonth(event.currentTarget.value)}
+            onChange={(event) => setMonth(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>{tx(p.locale, "提出期限", "Deadline")}</span>
+          <input
+            type="date"
+            required
+            value={deadline}
+            onInput={(event) => setDeadline(event.currentTarget.value)}
+            onChange={(event) => setDeadline(event.target.value)}
+          />
+        </label>
+        <div className="form-note">
+          <BellRing />
+          <p>
+            {tx(
+              p.locale,
+              "開始するとログイン済みメンバーのホームと通知センターに表示されます。",
+              "The request appears on member home and in notifications.",
+            )}
+          </p>
+        </div>
+        <button className="primary-button" type="submit">
+          {tx(p.locale, "募集を開始", "Start collection")}
+        </button>
+      </form>
+    </div>
+  );
+}
 
-function AvailabilityScreen(p: ScreenProps) { const dates = useMemo(() => Array.from({ length: 30 }, (_, i) => ({ key: `11/${i + 1}`, day: ['日','月','火','水','木','金','土'][new Date(2026,10,i+1).getDay()] })), []); const [choices, setChoices] = useState<Record<string,string>>(Object.fromEntries(dates.map((d,i) => [d.key, i % 4 === 1 ? '不可' : '09:00–18:00']))); const [weekdays, setWeekdays] = useState(['月','水','金']); const [bulkTime, setBulkTime] = useState('17:00–22:00'); const apply = () => setChoices((current) => Object.fromEntries(dates.map((d) => [d.key, weekdays.includes(d.day) ? bulkTime : current[d.key]]))); return <div className="screen"><PageTitle title={tx(p.locale, '11月の勤務希望', 'November availability')} subtitle={tx(p.locale, '締切 10月25日', 'Due Oct 25')} onBack={() => p.navigate('home')} /><details className="bulk-panel" open><summary>{tx(p.locale, '一括設定', 'Bulk settings')}</summary><div className="weekday-buttons">{['月','火','水','木','金','土','日'].map((day) => <button key={day} className={weekdays.includes(day) ? 'selected' : ''} onClick={() => setWeekdays((items) => items.includes(day) ? items.filter((item) => item !== day) : [...items, day])}>{day}</button>)}</div><select value={bulkTime} onChange={(event) => setBulkTime(event.target.value)}><option>09:00–18:00</option><option>12:00–20:00</option><option>17:00–22:00</option></select><div className="inline-actions"><button onClick={apply}>{tx(p.locale, '毎週の設定を反映', 'Apply weekly pattern')}</button><button onClick={() => setChoices((current) => Object.fromEntries(dates.map((d,i) => [d.key, i > 6 ? current[dates[i-7].key] : current[d.key]])))}>{tx(p.locale, '前週をコピー', 'Copy previous week')}</button></div></details><div className="availability-month">{dates.map((date) => <div className="availability-day" key={date.key}><div><strong>{date.key}</strong><small>{date.day}</small></div><select value={choices[date.key]} onChange={(event) => setChoices((current) => ({ ...current, [date.key]: event.target.value }))}><option>09:00–18:00</option><option>12:00–20:00</option><option>17:00–22:00</option><option value="不可">{tx(p.locale, '勤務不可', 'Unavailable')}</option></select></div>)}</div><button className="primary-button full-button" onClick={() => { p.setAvailabilitySubmitted(true); p.openModal({ type: 'success', title: tx(p.locale, '提出済み ✓', 'Submitted ✓'), body: tx(p.locale, '最終更新 10月18日 20:12', 'Updated Oct 18, 20:12') }); }}>{p.availabilitySubmitted ? tx(p.locale, '修正を保存', 'Save changes') : tx(p.locale, '11月の希望を提出', 'Submit November availability')}</button></div>; }
+function AvailabilityScreen(p: ScreenProps) {
+  const person =
+    p.staff.find((item) => item.id === p.currentStaffId) ?? p.staff[0];
+  return (
+    <AvailabilityCalendar
+      locale={p.locale}
+      person={person}
+      scheduling={p.scheduling}
+      back={() => p.navigate("home")}
+    />
+  );
+}
 
-function Builder(p: ScreenProps) { return <div className="screen screen--wide"><PageTitle title={tx(p.locale, 'シフト作成', 'Build schedule')} subtitle={tx(p.locale, '11月10日〜13日 · 下書き', 'Nov 10–13 · Draft')} onBack={() => p.navigate('home')} /><ScheduleTimeline locale={p.locale} staff={p.staff} days={p.shiftDays} setDays={p.setShiftDays} onReview={() => p.navigate('publish')} /></div>; }
-function Publish(p: ScreenProps) { return <div className="screen"><PageTitle title={tx(p.locale, '公開前の確認', 'Review & publish')} onBack={() => p.navigate('builder')} /><div className="publish-summary"><span className="success-orb"><CalendarCheck2 /></span><h3>{tx(p.locale, '11月10日〜13日のシフト', 'Nov 10–13 schedule')}</h3><p>{tx(p.locale, '確定8件 · 未確定6件', '8 confirmed · 6 unconfirmed')}</p></div><button className="primary-button full-button" disabled={p.published} onClick={() => p.openModal({ type: 'confirm', title: tx(p.locale, '公開しますか？', 'Publish schedule?'), body: tx(p.locale, '確定シフトをメンバーへ通知します。', 'Members will be notified.'), onConfirm: () => { p.setPublished(true); p.navigate('home'); } })}>{p.published ? tx(p.locale, '公開済み', 'Published') : tx(p.locale, 'シフトを公開', 'Publish')}</button></div>; }
+function Builder(p: ScreenProps) {
+  return (
+    <div className="screen screen--wide">
+      <PageTitle
+        title={tx(p.locale, "シフト作成", "Build schedule")}
+        subtitle={tx(
+          p.locale,
+          "月間シフト · 下書き",
+          "Monthly schedule · Draft",
+        )}
+        onBack={() => p.navigate("home")}
+      />
+      <ScheduleTimeline
+        locale={p.locale}
+        staff={p.staff}
+        days={p.scheduling.days}
+        month={p.scheduling.selectedScheduleMonth}
+        selectedDate={p.scheduling.selectedScheduleDate}
+        onMonthChange={p.scheduling.changeScheduleMonth}
+        onDateChange={p.scheduling.setSelectedScheduleDate}
+        onConfirm={p.scheduling.confirmShift}
+        onReview={() => p.navigate("publish")}
+      />
+    </div>
+  );
+}
+function Publish(p: ScreenProps) {
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "公開前の確認", "Review & publish")}
+        onBack={() => p.navigate("builder")}
+      />
+      <div className="publish-summary">
+        <span className="success-orb">
+          <CalendarCheck2 />
+        </span>
+        <h3>{monthLabel(p.scheduling.selectedScheduleMonth, p.locale)}</h3>
+        <p>
+          {
+            p.scheduling.days
+              .flatMap((day) => day.rows)
+              .filter((row) => row.confirmed).length
+          }{" "}
+          {tx(p.locale, "件確定", "confirmed")}
+        </p>
+      </div>
+      <button
+        className="primary-button full-button"
+        disabled={p.published}
+        onClick={() =>
+          p.openModal({
+            type: "confirm",
+            title: tx(p.locale, "公開しますか？", "Publish schedule?"),
+            body: tx(
+              p.locale,
+              "確定シフトをメンバーへ通知します。",
+              "Members will be notified.",
+            ),
+            onConfirm: () => {
+              p.setPublished(true);
+              p.navigate("home");
+            },
+          })
+        }
+      >
+        {p.published
+          ? tx(p.locale, "公開済み", "Published")
+          : tx(p.locale, "シフトを公開", "Publish")}
+      </button>
+    </div>
+  );
+}
 
-function MemberSchedule(p: ScreenProps) { return <div className="screen"><PageTitle title={tx(p.locale, 'マイシフト', 'My schedule')} /><div className="schedule-list">{[['10/14','09:00 — 18:00'],['10/16','17:00 — 22:00'],['10/20','12:00 — 20:00']].map((row) => <button key={row[0]} onClick={() => p.navigate('attendanceDetail')}><span><strong>{row[0]}</strong><small>{tx(p.locale, '確定', 'Confirmed')}</small></span><div><strong>{row[1]}</strong><small>{tx(p.locale, '渋谷店', 'Shibuya')}</small></div><ChevronRight /></button>)}</div></div>; }
+function MemberSchedule(p: ScreenProps) {
+  return (
+    <div className="screen">
+      <PageTitle title={tx(p.locale, "マイシフト", "My schedule")} />
+      <div className="schedule-list">
+        {[
+          ["10/14", "09:00 — 18:00"],
+          ["10/16", "17:00 — 22:00"],
+          ["10/20", "12:00 — 20:00"],
+        ].map((row) => (
+          <button key={row[0]} onClick={() => p.navigate("attendanceDetail")}>
+            <span>
+              <strong>{row[0]}</strong>
+              <small>{tx(p.locale, "確定", "Confirmed")}</small>
+            </span>
+            <div>
+              <strong>{row[1]}</strong>
+              <small>{tx(p.locale, "渋谷店", "Shibuya")}</small>
+            </div>
+            <ChevronRight />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-function AttendanceClock(p: ScreenProps) { const label = p.attendance === 'before' ? tx(p.locale, '出勤', 'Clock in') : p.attendance === 'working' ? tx(p.locale, '休憩開始', 'Start break') : p.attendance === 'break' ? tx(p.locale, '休憩終了', 'End break') : tx(p.locale, '勤務終了', 'Complete'); const next = () => p.setAttendance(p.attendance === 'before' ? 'working' : p.attendance === 'working' ? 'break' : p.attendance === 'break' ? 'working' : 'complete'); return <div className="screen"><PageTitle title={tx(p.locale, '勤怠', 'Attendance')} /><div className="clock-card"><small>2026/10/14</small><strong>09:41</strong><p>{tx(p.locale, '予定 09:00 — 18:00', 'Scheduled 09:00–18:00')}</p></div>{p.attendance !== 'complete' && <button className="clock-button" onClick={next}><Clock3 />{label}</button>}{p.attendance === 'working' && <button className="secondary-button full-button" onClick={() => p.setAttendance('complete')}>{tx(p.locale, '退勤', 'Clock out')}</button>}<button className="summary-row" onClick={() => p.navigate('attendanceHistory')}><span><strong>{tx(p.locale, '勤怠履歴', 'Attendance history')}</strong><small>{tx(p.locale, '過去の記録と修正', 'Past records and corrections')}</small></span><ChevronRight /></button></div>; }
+function AttendanceClock(p: ScreenProps) {
+  const label =
+    p.attendance === "before"
+      ? tx(p.locale, "出勤", "Clock in")
+      : p.attendance === "working"
+        ? tx(p.locale, "休憩開始", "Start break")
+        : p.attendance === "break"
+          ? tx(p.locale, "休憩終了", "End break")
+          : tx(p.locale, "勤務終了", "Complete");
+  const next = () =>
+    p.setAttendance(
+      p.attendance === "before"
+        ? "working"
+        : p.attendance === "working"
+          ? "break"
+          : p.attendance === "break"
+            ? "working"
+            : "complete",
+    );
+  return (
+    <div className="screen">
+      <PageTitle title={tx(p.locale, "勤怠", "Attendance")} />
+      <div className="clock-card">
+        <small>2026/10/14</small>
+        <strong>09:41</strong>
+        <p>{tx(p.locale, "予定 09:00 — 18:00", "Scheduled 09:00–18:00")}</p>
+      </div>
+      {p.attendance !== "complete" && (
+        <button className="clock-button" onClick={next}>
+          <Clock3 />
+          {label}
+        </button>
+      )}
+      {p.attendance === "working" && (
+        <button
+          className="secondary-button full-button"
+          onClick={() => p.setAttendance("complete")}
+        >
+          {tx(p.locale, "退勤", "Clock out")}
+        </button>
+      )}
+      <button
+        className="summary-row"
+        onClick={() => p.navigate("attendanceHistory")}
+      >
+        <span>
+          <strong>{tx(p.locale, "勤怠履歴", "Attendance history")}</strong>
+          <small>
+            {tx(p.locale, "過去の記録と修正", "Past records and corrections")}
+          </small>
+        </span>
+        <ChevronRight />
+      </button>
+    </div>
+  );
+}
 
-function TeamAttendance(p: ScreenProps) { return <div className="screen"><PageTitle title={tx(p.locale, '勤怠管理', 'Attendance management')} subtitle={tx(p.locale, '今日 · 10月14日', 'Today · Oct 14')} /><div className="attendance-stats"><span><strong>3</strong><small>{tx(p.locale, '勤務中', 'Working')}</small></span><span><strong>2</strong><small>{tx(p.locale, '退勤済み', 'Complete')}</small></span><span><strong>1</strong><small>{tx(p.locale, '未出勤', 'Not in')}</small></span></div><div className="list-card">{p.staff.filter((s) => s.status === 'ACTIVE').map((person, i) => <button className="person-row person-row--button" key={person.id} onClick={() => { p.setSelectedStaffId(person.id); p.navigate('attendanceHistory'); }}><Avatar person={person} small /><span><strong>{person[p.locale]}</strong><small>{i === 0 ? '09:02 — ' + tx(p.locale, '勤務中', 'Working') : i === 1 ? '09:00 — 18:01' : tx(p.locale, '未出勤', 'Not clocked in')}</small></span><ChevronRight /></button>)}</div><button className="secondary-button full-button" onClick={() => p.navigate('kiosk')}><Smartphone />{tx(p.locale, '共用端末打刻を開く', 'Open shared kiosk')}</button></div>; }
+function TeamAttendance(p: ScreenProps) {
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "勤怠管理", "Attendance management")}
+        subtitle={tx(p.locale, "今日 · 10月14日", "Today · Oct 14")}
+      />
+      <div className="attendance-stats">
+        <span>
+          <strong>3</strong>
+          <small>{tx(p.locale, "勤務中", "Working")}</small>
+        </span>
+        <span>
+          <strong>2</strong>
+          <small>{tx(p.locale, "退勤済み", "Complete")}</small>
+        </span>
+        <span>
+          <strong>1</strong>
+          <small>{tx(p.locale, "未出勤", "Not in")}</small>
+        </span>
+      </div>
+      <div className="list-card">
+        {p.staff
+          .filter((s) => s.status === "ACTIVE")
+          .map((person, i) => (
+            <button
+              className="person-row person-row--button"
+              key={person.id}
+              onClick={() => {
+                p.setSelectedStaffId(person.id);
+                p.navigate("attendanceHistory");
+              }}
+            >
+              <Avatar person={person} small />
+              <span>
+                <strong>{person[p.locale]}</strong>
+                <small>
+                  {i === 0
+                    ? "09:02 — " + tx(p.locale, "勤務中", "Working")
+                    : i === 1
+                      ? "09:00 — 18:01"
+                      : tx(p.locale, "未出勤", "Not clocked in")}
+                </small>
+              </span>
+              <ChevronRight />
+            </button>
+          ))}
+      </div>
+      <button
+        className="secondary-button full-button"
+        onClick={() => p.navigate("kiosk")}
+      >
+        <Smartphone />
+        {tx(p.locale, "共用端末打刻を開く", "Open shared kiosk")}
+      </button>
+    </div>
+  );
+}
 
-function AttendanceHistory(p: ScreenProps) { const person = p.staff.find((s) => s.id === p.selectedStaffId) ?? p.staff[0]; const [month, setMonth] = useState('2026-10'); return <div className="screen"><PageTitle title={tx(p.locale, '勤怠履歴', 'Attendance history')} subtitle={p.role === 'ADMIN' ? person[p.locale] : undefined} onBack={() => p.navigate(p.role === 'ADMIN' ? 'teamAttendance' : 'settings')} /><label className="standalone-field"><span>{tx(p.locale, '対象月', 'Month')}</span><select value={month} onChange={(event) => setMonth(event.target.value)}><option value="2026-10">2026年10月</option><option value="2026-09">2026年9月</option></select></label><div className="list-card">{month === '2026-10' ? [['10/14','09:02 — 18:06','休憩60分 · 8h04m'],['10/13','09:01 — 17:58','休憩60分 · 7h57m']].map((row) => <button className="history-row" key={row[0]} onClick={() => p.navigate('attendanceDetail')}><div><strong>{row[0]}</strong><small>{row[2]}</small></div><span><strong>{row[1]}</strong></span><ChevronRight /></button>) : <div className="quiet-empty">{tx(p.locale, '記録はありません', 'No records')}</div>}</div></div>; }
+function AttendanceHistory(p: ScreenProps) {
+  const person = p.staff.find((s) => s.id === p.selectedStaffId) ?? p.staff[0];
+  const [month, setMonth] = useState("2026-10");
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "勤怠履歴", "Attendance history")}
+        subtitle={p.role === "ADMIN" ? person[p.locale] : undefined}
+        onBack={() =>
+          p.navigate(p.role === "ADMIN" ? "teamAttendance" : "settings")
+        }
+      />
+      <label className="standalone-field">
+        <span>{tx(p.locale, "対象月", "Month")}</span>
+        <select
+          value={month}
+          onChange={(event) => setMonth(event.target.value)}
+        >
+          <option value="2026-10">2026年10月</option>
+          <option value="2026-09">2026年9月</option>
+        </select>
+      </label>
+      <div className="list-card">
+        {month === "2026-10" ? (
+          [
+            ["10/14", "09:02 — 18:06", "休憩60分 · 8h04m"],
+            ["10/13", "09:01 — 17:58", "休憩60分 · 7h57m"],
+          ].map((row) => (
+            <button
+              className="history-row"
+              key={row[0]}
+              onClick={() => p.navigate("attendanceDetail")}
+            >
+              <div>
+                <strong>{row[0]}</strong>
+                <small>{row[2]}</small>
+              </div>
+              <span>
+                <strong>{row[1]}</strong>
+              </span>
+              <ChevronRight />
+            </button>
+          ))
+        ) : (
+          <div className="quiet-empty">
+            {tx(p.locale, "記録はありません", "No records")}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-function StaffScreen(p: ScreenProps) { const [query,setQuery]=useState(''); const [filter,setFilter]=useState<'ALL'|'INVITED'|'ACTIVE'|'DISABLED'>('ALL'); const shown=p.staff.filter((s)=>(filter==='ALL'||s.status===filter)&&s[p.locale].toLowerCase().includes(query.toLowerCase())); return <div className="screen"><PageTitle title={tx(p.locale, 'スタッフ管理', 'Staff management')} subtitle={`${p.staff.filter((s)=>s.status==='ACTIVE').length} ${tx(p.locale,'人が利用中','active')}`} action={<button className="round-add" aria-label={tx(p.locale,'スタッフ追加','Add staff')} onClick={()=>{p.setEditingStaffId(null);p.navigate('staffForm');}}><Plus /></button>} /><label className="search-box"><Search /><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={tx(p.locale,'名前で検索','Search name')} /></label><div className="filter-tabs">{(['ALL','ACTIVE','INVITED','DISABLED'] as const).map((item)=><button key={item} className={filter===item?'active':''} onClick={()=>setFilter(item)}>{item==='ALL'?tx(p.locale,'すべて','All'):statusCopy[item][p.locale==='ja'?0:1]}</button>)}</div><div className="list-card">{shown.map((person)=><button className="person-row person-row--button" key={person.id} onClick={()=>{p.setSelectedStaffId(person.id);p.navigate('staffDetail');}}><Avatar person={person} small /><span><strong>{person[p.locale]}</strong><small>{person.email}</small></span><Pill tone={person.status==='ACTIVE'?'mint':person.status==='INVITED'?'orange':'gray'}>{statusCopy[person.status][p.locale==='ja'?0:1]}</Pill></button>)}</div></div>; }
+function StaffScreen(p: ScreenProps) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<
+    "ALL" | "INVITED" | "ACTIVE" | "DISABLED"
+  >("ALL");
+  const shown = p.staff.filter(
+    (s) =>
+      (filter === "ALL" || s.status === filter) &&
+      s[p.locale].toLowerCase().includes(query.toLowerCase()),
+  );
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "スタッフ管理", "Staff management")}
+        subtitle={`${p.staff.filter((s) => s.status === "ACTIVE").length} ${tx(p.locale, "人が利用中", "active")}`}
+        action={
+          <button
+            className="round-add"
+            aria-label={tx(p.locale, "スタッフ追加", "Add staff")}
+            onClick={() => {
+              p.setEditingStaffId(null);
+              p.navigate("staffForm");
+            }}
+          >
+            <Plus />
+          </button>
+        }
+      />
+      <label className="search-box">
+        <Search />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={tx(p.locale, "名前で検索", "Search name")}
+        />
+      </label>
+      <div className="filter-tabs">
+        {(["ALL", "ACTIVE", "INVITED", "DISABLED"] as const).map((item) => (
+          <button
+            key={item}
+            className={filter === item ? "active" : ""}
+            onClick={() => setFilter(item)}
+          >
+            {item === "ALL"
+              ? tx(p.locale, "すべて", "All")
+              : statusCopy[item][p.locale === "ja" ? 0 : 1]}
+          </button>
+        ))}
+      </div>
+      <div className="list-card">
+        {shown.map((person) => (
+          <button
+            className="person-row person-row--button"
+            key={person.id}
+            onClick={() => {
+              p.setSelectedStaffId(person.id);
+              p.navigate("staffDetail");
+            }}
+          >
+            <Avatar person={person} small />
+            <span>
+              <strong>{person[p.locale]}</strong>
+              <small>{person.email}</small>
+            </span>
+            <Pill
+              tone={
+                person.status === "ACTIVE"
+                  ? "mint"
+                  : person.status === "INVITED"
+                    ? "orange"
+                    : "gray"
+              }
+            >
+              {statusCopy[person.status][p.locale === "ja" ? 0 : 1]}
+            </Pill>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-function StaffDetail(p: ScreenProps) { const person=p.staff.find((s)=>s.id===p.selectedStaffId)??p.staff[0]; const updateStatus=(status:StaffRecord['status'])=>p.setStaff((items)=>items.map((item)=>item.id===person.id?{...item,status,active:status!=='DISABLED'}:item)); return <div className="screen"><PageTitle title={tx(p.locale,'スタッフ詳細','Staff details')} onBack={()=>p.navigate('staff')} action={<button className="text-button" onClick={()=>{p.setEditingStaffId(person.id);p.navigate('staffForm');}}>{tx(p.locale,'編集','Edit')}</button>} /><div className="profile-card"><Avatar person={person}/><h3>{person[p.locale]}</h3><Pill tone={person.status==='ACTIVE'?'mint':person.status==='INVITED'?'orange':'gray'}>{statusCopy[person.status][p.locale==='ja'?0:1]}</Pill><p>{person.email}</p></div><dl className="detail-list"><div><dt>{tx(p.locale,'権限','Role')}</dt><dd>{person.role}</dd></div><div><dt>{tx(p.locale,'時給','Hourly rate')}</dt><dd>¥{person.hourlyRate.toLocaleString()}</dd></div><div><dt>{tx(p.locale,'電話番号','Phone')}</dt><dd>{person.phone||'—'}</dd></div></dl>{person.status==='INVITED'&&<button className="primary-button full-button" onClick={()=>p.openModal({type:'success',title:tx(p.locale,'招待メールを再送しました','Invitation resent'),body:`${person.email}${tx(p.locale,'へ送信しました。',' was notified.')}`})}><Mail />{tx(p.locale,'招待メールを再送','Resend invitation')}</button>}<div className="action-list">{p.effectiveFeatures.SCHEDULE&&<button onClick={()=>p.navigate('builder')}><CalendarDays/><span><strong>{tx(p.locale,'シフト','Schedule')}</strong></span><ChevronRight/></button>}{p.effectiveFeatures.ATTENDANCE&&<button onClick={()=>p.navigate('attendanceHistory')}><ReceiptText/><span><strong>{tx(p.locale,'勤怠履歴','Attendance history')}</strong></span><ChevronRight/></button>}{p.effectiveFeatures.ESTIMATED_PAY&&<button onClick={()=>p.navigate('payroll')}><WalletCards/><span><strong>{tx(p.locale,'給与概算','Estimated pay')}</strong></span><ChevronRight/></button>}</div><button className={person.status==='DISABLED'?'primary-button full-button':'secondary-button danger-button full-button'} onClick={()=>updateStatus(person.status==='DISABLED'?'ACTIVE':'DISABLED')}>{person.status==='DISABLED'?tx(p.locale,'利用を再開','Reactivate'):tx(p.locale,'スタッフを無効化','Disable staff')}</button></div>; }
+function StaffDetail(p: ScreenProps) {
+  const person =
+    p.allStaff.find((s) => s.id === p.selectedStaffId) ?? p.staff[0];
+  const updateStatus = (status: StaffRecord["status"]) =>
+    p.setStaff((items) =>
+      items.map((item) =>
+        item.id === person.id
+          ? { ...item, status, active: status !== "DISABLED" }
+          : item,
+      ),
+    );
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "スタッフ詳細", "Staff details")}
+        onBack={() => p.navigate("staff")}
+        action={
+          <button
+            className="text-button"
+            onClick={() => {
+              p.setEditingStaffId(person.id);
+              p.navigate("staffForm");
+            }}
+          >
+            {tx(p.locale, "編集", "Edit")}
+          </button>
+        }
+      />
+      <div className="profile-card">
+        <Avatar person={person} />
+        <h3>{person[p.locale]}</h3>
+        <Pill
+          tone={
+            person.status === "ACTIVE"
+              ? "mint"
+              : person.status === "INVITED"
+                ? "orange"
+                : "gray"
+          }
+        >
+          {statusCopy[person.status][p.locale === "ja" ? 0 : 1]}
+        </Pill>
+        <p>{person.email}</p>
+      </div>
+      <dl className="detail-list">
+        <div>
+          <dt>{tx(p.locale, "権限", "Role")}</dt>
+          <dd>{person.role}</dd>
+        </div>
+        <div>
+          <dt>{tx(p.locale, "時給", "Hourly rate")}</dt>
+          <dd>¥{person.hourlyRate.toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt>{tx(p.locale, "電話番号", "Phone")}</dt>
+          <dd>{person.phone || "—"}</dd>
+        </div>
+      </dl>
+      {person.status === "INVITED" && (
+        <button
+          className="primary-button full-button"
+          onClick={() =>
+            p.openModal({
+              type: "success",
+              title: tx(
+                p.locale,
+                "招待メールを再送しました",
+                "Invitation resent",
+              ),
+              body: `${person[p.locale]} · ${person.email} · ${tx(p.locale, "店舗ID", "Store ID")} ${p.stores.find((store) => store.id === person.storeId)?.code}`,
+            })
+          }
+        >
+          <Mail />
+          {tx(p.locale, "招待メールを再送", "Resend invitation")}
+        </button>
+      )}
+      {person.status === "INVITED" && (
+        <button
+          className="secondary-button full-button"
+          onClick={() => p.previewInvitation(person.id)}
+        >
+          {tx(
+            p.locale,
+            "招待メールの初回設定を確認",
+            "Preview invited staff setup",
+          )}
+        </button>
+      )}
+      <div className="action-list">
+        {p.effectiveFeatures.SCHEDULE && (
+          <button onClick={() => p.navigate("builder")}>
+            <CalendarDays />
+            <span>
+              <strong>{tx(p.locale, "シフト", "Schedule")}</strong>
+            </span>
+            <ChevronRight />
+          </button>
+        )}
+        {p.effectiveFeatures.ATTENDANCE && (
+          <button onClick={() => p.navigate("attendanceHistory")}>
+            <ReceiptText />
+            <span>
+              <strong>{tx(p.locale, "勤怠履歴", "Attendance history")}</strong>
+            </span>
+            <ChevronRight />
+          </button>
+        )}
+        {p.effectiveFeatures.ESTIMATED_PAY && (
+          <button onClick={() => p.navigate("payroll")}>
+            <WalletCards />
+            <span>
+              <strong>{tx(p.locale, "給与概算", "Estimated pay")}</strong>
+            </span>
+            <ChevronRight />
+          </button>
+        )}
+      </div>
+      <button
+        className={
+          person.status === "DISABLED"
+            ? "primary-button full-button"
+            : "secondary-button danger-button full-button"
+        }
+        onClick={() =>
+          updateStatus(person.status === "DISABLED" ? "ACTIVE" : "DISABLED")
+        }
+      >
+        {person.status === "DISABLED"
+          ? tx(p.locale, "利用を再開", "Reactivate")
+          : tx(p.locale, "スタッフを無効化", "Disable staff")}
+      </button>
+    </div>
+  );
+}
 
-function StaffForm(p: ScreenProps) { const original=p.staff.find((s)=>s.id===p.editingStaffId); const [name,setName]=useState(original?.ja??''); const [email,setEmail]=useState(original?.email??''); const [role,setRole]=useState<Role>(original?.role??'MEMBER'); const [storeId,setStoreId]=useState(original?.storeId??p.storeId); const [rate,setRate]=useState(String(original?.hourlyRate??1300)); const [phone,setPhone]=useState(original?.phone??''); function save(e:FormEvent){e.preventDefault();const id=original?.id??`staff-${Date.now()}`;const person:StaffRecord={id,ja:name,en:name,email,role,storeId,hourlyRate:Number(rate),phone,status:original?.status??'INVITED',active:original?.active??true,color:original?.color??'#4f86a8'};p.setStaff((items)=>original?items.map((item)=>item.id===id?person:item):[...items,person]);p.setSelectedStaffId(id);p.openModal({type:'success',title:original?tx(p.locale,'保存しました','Saved'):tx(p.locale,'招待メールを送信しました','Invitation sent'),body:original?tx(p.locale,'スタッフ情報を更新しました。','Staff details updated.'):`${email}${tx(p.locale,'へ初期パスワード設定メールを送信しました。',' received a password setup email.')}`});p.navigate('staffDetail');} return <div className="screen"><PageTitle title={original?tx(p.locale,'スタッフを編集','Edit staff'):tx(p.locale,'スタッフを追加','Add staff')} onBack={()=>p.navigate(original?'staffDetail':'staff')} /><form className="mock-form" onSubmit={save}><label><span>{tx(p.locale,'名前','Name')}</span><input required value={name} onChange={(e)=>setName(e.target.value)} /></label><label><span>{tx(p.locale,'メールアドレス','Email')}</span><input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} /></label><label><span>{tx(p.locale,'権限','Role')}</span><select value={role} onChange={(e)=>setRole(e.target.value as Role)}><option value="MEMBER">MEMBER</option><option value="ADMIN">ADMIN</option></select></label><label><span>{tx(p.locale,'店舗','Store')}</span><select value={storeId} onChange={(e)=>setStoreId(e.target.value)}>{p.stores.map((store)=><option key={store.id} value={store.id}>{store[p.locale]}</option>)}</select></label><label><span>{tx(p.locale,'時給','Hourly rate')}</span><input type="number" min="0" value={rate} onChange={(e)=>setRate(e.target.value)} /></label><label><span>{tx(p.locale,'電話番号（任意）','Phone (optional)')}</span><input value={phone} onChange={(e)=>setPhone(e.target.value)} /></label><button className="primary-button" type="submit">{original?tx(p.locale,'保存','Save'):tx(p.locale,'追加して招待','Add and invite')}</button></form></div>; }
+function StaffForm(p: ScreenProps) {
+  const original = p.allStaff.find((s) => s.id === p.editingStaffId);
+  const [name, setName] = useState(original?.ja ?? "");
+  const [email, setEmail] = useState(original?.email ?? "");
+  const [role, setRole] = useState<Role>(original?.role ?? "MEMBER");
+  const [storeId, setStoreId] = useState(original?.storeId ?? p.storeId);
+  const [rate, setRate] = useState(String(original?.hourlyRate ?? 1300));
+  const [phone, setPhone] = useState(original?.phone ?? "");
+  const [error, setError] = useState("");
+  function save(e: FormEvent) {
+    e.preventDefault();
+    if (
+      p.allStaff.some(
+        (person) =>
+          person.id !== original?.id &&
+          person.storeId === storeId &&
+          person.email.toLowerCase() === email.trim().toLowerCase(),
+      )
+    ) {
+      setError(
+        tx(
+          p.locale,
+          "この店舗には同じメールアドレスが登録されています。",
+          "This email is already registered at this store.",
+        ),
+      );
+      return;
+    }
+    const id = original?.id ?? `staff-${Date.now()}`;
+    const person: StaffRecord = {
+      id,
+      ja: name,
+      en: name,
+      email: email.trim().toLowerCase(),
+      role,
+      storeId,
+      hourlyRate: Number(rate),
+      phone,
+      status: original?.status ?? "INVITED",
+      active: original?.active ?? true,
+      color: original?.color ?? "#4f86a8",
+    };
+    p.setStaff((items) =>
+      original
+        ? items.map((item) => (item.id === id ? person : item))
+        : [...items, person],
+    );
+    p.setSelectedStaffId(id);
+    p.openModal({
+      type: "success",
+      title: original
+        ? tx(p.locale, "保存しました", "Saved")
+        : tx(p.locale, "招待メールを送信しました", "Invitation sent"),
+      body: original
+        ? tx(p.locale, "スタッフ情報を更新しました。", "Staff details updated.")
+        : `${email}${tx(p.locale, "へ初期パスワード設定メールを送信しました。", " received a password setup email.")} · ${tx(p.locale, "店舗ID", "Store ID")} ${p.stores.find((store) => store.id === storeId)?.code}`,
+    });
+    p.navigate("staffDetail");
+  }
+  return (
+    <div className="screen">
+      <PageTitle
+        title={
+          original
+            ? tx(p.locale, "スタッフを編集", "Edit staff")
+            : tx(p.locale, "スタッフを追加", "Add staff")
+        }
+        onBack={() => p.navigate(original ? "staffDetail" : "staff")}
+      />
+      <form className="mock-form" onSubmit={save}>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        <label>
+          <span>{tx(p.locale, "名前", "Name")}</span>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label>
+          <span>{tx(p.locale, "メールアドレス", "Email")}</span>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </label>
+        <label>
+          <span>{tx(p.locale, "権限", "Role")}</span>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as Role)}
+          >
+            <option value="MEMBER">MEMBER</option>
+            <option value="ADMIN">ADMIN</option>
+          </select>
+        </label>
+        <label>
+          <span>{tx(p.locale, "店舗", "Store")}</span>
+          <select value={storeId} onChange={(e) => setStoreId(e.target.value)}>
+            {p.stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store[p.locale]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{tx(p.locale, "時給", "Hourly rate")}</span>
+          <input
+            type="number"
+            min="0"
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+          />
+        </label>
+        <label>
+          <span>{tx(p.locale, "電話番号（任意）", "Phone (optional)")}</span>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </label>
+        <button className="primary-button" type="submit">
+          {original
+            ? tx(p.locale, "保存", "Save")
+            : tx(p.locale, "追加して招待", "Add and invite")}
+        </button>
+      </form>
+    </div>
+  );
+}
 
-function Stores(p: ScreenProps) { return <div className="screen"><PageTitle title={tx(p.locale,'店舗管理','Stores')} onBack={()=>p.navigate('settings')} action={<button className="round-add" aria-label={tx(p.locale,'店舗追加','Add store')} onClick={()=>{p.setEditingStoreId(null);p.navigate('storeForm');}}><Plus /></button>} /><div className="list-card">{p.stores.map((store)=><button className="store-management-row" key={store.id} onClick={()=>{p.setEditingStoreId(store.id);p.navigate('storeForm');}}><span className="store-symbol">{store.en[0]}</span><span><strong>{store[p.locale]}</strong><small>{store.description}</small></span><ChevronRight /></button>)}</div></div>; }
-function StoreForm(p: ScreenProps) { const original=p.stores.find((s)=>s.id===p.editingStoreId); const [name,setName]=useState(original?.ja??''); const [description,setDescription]=useState(original?.description??''); return <div className="screen"><PageTitle title={original?tx(p.locale,'店舗を編集','Edit store'):tx(p.locale,'店舗を追加','Add store')} onBack={()=>p.navigate('stores')} /><form className="mock-form" onSubmit={(e)=>{e.preventDefault();const store:StoreRecord={id:original?.id??`store-${Date.now()}`,ja:name,en:name,description};p.setStores((items)=>original?items.map((item)=>item.id===store.id?store:item):[...items,store]);p.openModal({type:'success',title:tx(p.locale,'店舗を保存しました','Store saved'),body:name});p.navigate('stores');}}><label><span>{tx(p.locale,'店舗名','Store name')}</span><input required value={name} onChange={(e)=>setName(e.target.value)} /></label><label><span>{tx(p.locale,'店舗説明（任意）','Description (optional)')}</span><textarea value={description} onChange={(e)=>setDescription(e.target.value)} /></label><button className="primary-button" type="submit">{original?tx(p.locale,'保存','Save'):tx(p.locale,'追加','Add store')}</button></form></div>; }
+function Stores(p: ScreenProps) {
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "店舗管理", "Stores")}
+        onBack={() => p.navigate("settings")}
+        action={
+          <button
+            className="round-add"
+            aria-label={tx(p.locale, "店舗追加", "Add store")}
+            onClick={() => {
+              p.setEditingStoreId(null);
+              p.navigate("storeForm");
+            }}
+          >
+            <Plus />
+          </button>
+        }
+      />
+      <div className="list-card">
+        {p.stores.map((store) => (
+          <button
+            className="store-management-row"
+            key={store.id}
+            onClick={() => {
+              p.setEditingStoreId(store.id);
+              p.navigate("storeForm");
+            }}
+          >
+            <span className="store-symbol">{store.en[0]}</span>
+            <span>
+              <strong>{store[p.locale]}</strong>
+              <small>{store.description}</small>
+            </span>
+            <ChevronRight />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+function StoreForm(p: ScreenProps) {
+  const original = p.stores.find((s) => s.id === p.editingStoreId);
+  const [name, setName] = useState(original?.ja ?? "");
+  const [description, setDescription] = useState(original?.description ?? "");
+  return (
+    <div className="screen">
+      <PageTitle
+        title={
+          original
+            ? tx(p.locale, "店舗を編集", "Edit store")
+            : tx(p.locale, "店舗を追加", "Add store")
+        }
+        onBack={() => p.navigate("stores")}
+      />
+      <form
+        className="mock-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const store: StoreRecord = {
+            id: original?.id ?? `store-${Date.now()}`,
+            code: original?.code ?? createStoreCode(p.stores),
+            ja: name,
+            en: name,
+            description,
+          };
+          p.setStores((items) =>
+            original
+              ? items.map((item) => (item.id === store.id ? store : item))
+              : [...items, store],
+          );
+          p.openModal({
+            type: "success",
+            title: tx(p.locale, "店舗を保存しました", "Store saved"),
+            body: name,
+          });
+          p.navigate("stores");
+        }}
+      >
+        <label>
+          <span>{tx(p.locale, "店舗名", "Store name")}</span>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+        <label>
+          <span>
+            {tx(p.locale, "店舗説明（任意）", "Description (optional)")}
+          </span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <button className="primary-button" type="submit">
+          {original
+            ? tx(p.locale, "保存", "Save")
+            : tx(p.locale, "追加", "Add store")}
+        </button>
+      </form>
+    </div>
+  );
+}
 
-function OpenShifts(p: ScreenProps) { const [applied,setApplied]=useState(false); return <div className="screen"><PageTitle title={tx(p.locale,p.role==='ADMIN'?'緊急募集':'募集中のシフト',p.role==='ADMIN'?'Open shift recruitment':'Open shifts')} onBack={()=>p.navigate('home')} /><div className="open-shift-card"><Pill tone="orange">{tx(p.locale,'あと1名','1 spot')}</Pill><h3>{tx(p.locale,'10月16日（金）','Friday, Oct 16')}</h3><strong>17:00 — 22:00</strong><p><MapPin />{tx(p.locale,'渋谷店','Shibuya')}</p>{p.role==='MEMBER'?<button className={applied?'secondary-button':'primary-button'} onClick={()=>setApplied(!applied)}>{applied?tx(p.locale,'応募を取り消す','Cancel application'):tx(p.locale,'応募する','Apply')}</button>:<button className="primary-button" onClick={()=>p.openModal({type:'success',title:tx(p.locale,'募集を通知しました','Recruitment sent'),body:tx(p.locale,'対象メンバーへ通知しました。','Eligible members were notified.')})}>{tx(p.locale,'募集を開始・通知','Publish and notify')}</button>}</div></div>; }
-function GPS(p: ScreenProps) { return <div className="screen"><PageTitle title={tx(p.locale,'GPS共有','GPS sharing')} onBack={()=>p.navigate('settings')} /><div className="map-mock"><span className="store-pin"><Store />{tx(p.locale,'渋谷店','Shibuya')}</span>{p.staff.slice(0,3).map((person,i)=><span className={`map-person map-person-${i+1}`} key={person.id}><Avatar person={person} small /></span>)}</div>{p.role==='MEMBER'&&<div className="sharing-control"><div><Navigation/><span><strong>{tx(p.locale,'勤務中のみ共有','Share during shifts')}</strong><small>{p.gpsSharing?tx(p.locale,'共有中','Sharing'):tx(p.locale,'OFF','Off')}</small></span></div><button className={`switch ${p.gpsSharing?'on':''}`} onClick={()=>p.setGpsSharing(!p.gpsSharing)}><i /></button></div>}<div className="privacy-note"><ShieldCheck/><p>{tx(p.locale,'本人がONにした勤務時間中のみ共有されます。','Shared only during shifts when enabled by the member.')}</p></div></div>; }
+function OpenShifts(p: ScreenProps) {
+  const [applied, setApplied] = useState(false);
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(
+          p.locale,
+          p.role === "ADMIN" ? "緊急募集" : "募集中のシフト",
+          p.role === "ADMIN" ? "Open shift recruitment" : "Open shifts",
+        )}
+        onBack={() => p.navigate("home")}
+      />
+      <div className="open-shift-card">
+        <Pill tone="orange">{tx(p.locale, "あと1名", "1 spot")}</Pill>
+        <h3>{tx(p.locale, "10月16日（金）", "Friday, Oct 16")}</h3>
+        <strong>17:00 — 22:00</strong>
+        <p>
+          <MapPin />
+          {tx(p.locale, "渋谷店", "Shibuya")}
+        </p>
+        {p.role === "MEMBER" ? (
+          <button
+            className={applied ? "secondary-button" : "primary-button"}
+            onClick={() => setApplied(!applied)}
+          >
+            {applied
+              ? tx(p.locale, "応募を取り消す", "Cancel application")
+              : tx(p.locale, "応募する", "Apply")}
+          </button>
+        ) : (
+          <button
+            className="primary-button"
+            onClick={() =>
+              p.openModal({
+                type: "success",
+                title: tx(p.locale, "募集を通知しました", "Recruitment sent"),
+                body: tx(
+                  p.locale,
+                  "対象メンバーへ通知しました。",
+                  "Eligible members were notified.",
+                ),
+              })
+            }
+          >
+            {tx(p.locale, "募集を開始・通知", "Publish and notify")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+function GPS(p: ScreenProps) {
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "GPS共有", "GPS sharing")}
+        onBack={() => p.navigate("settings")}
+      />
+      <div className="map-mock">
+        <span className="store-pin">
+          <Store />
+          {tx(p.locale, "渋谷店", "Shibuya")}
+        </span>
+        {p.staff.slice(0, 3).map((person, i) => (
+          <span className={`map-person map-person-${i + 1}`} key={person.id}>
+            <Avatar person={person} small />
+          </span>
+        ))}
+      </div>
+      {p.role === "MEMBER" && (
+        <div className="sharing-control">
+          <div>
+            <Navigation />
+            <span>
+              <strong>
+                {tx(p.locale, "勤務中のみ共有", "Share during shifts")}
+              </strong>
+              <small>
+                {p.gpsSharing
+                  ? tx(p.locale, "共有中", "Sharing")
+                  : tx(p.locale, "OFF", "Off")}
+              </small>
+            </span>
+          </div>
+          <button
+            className={`switch ${p.gpsSharing ? "on" : ""}`}
+            onClick={() => p.setGpsSharing(!p.gpsSharing)}
+          >
+            <i />
+          </button>
+        </div>
+      )}
+      <div className="privacy-note">
+        <ShieldCheck />
+        <p>
+          {tx(
+            p.locale,
+            "本人がONにした勤務時間中のみ共有されます。",
+            "Shared only during shifts when enabled by the member.",
+          )}
+        </p>
+      </div>
+    </div>
+  );
+}
 
-function Notifications(p: ScreenProps) { const items=[{icon:UsersRound,title:tx(p.locale,'スタッフ招待メールを送信しました','Staff invitation sent'),body:'suzuki@example.com',time:'10:32'},{icon:CalendarDays,title:tx(p.locale,'11月のシフト希望を提出してください','Submit November availability'),body:tx(p.locale,'締切 10月25日','Due Oct 25'),time:'09:15'},{icon:LockKeyhole,title:tx(p.locale,'パスワード再設定メールを送信しました','Password reset email sent'),body:'admin@example.com',time:tx(p.locale,'昨日','Yesterday')}]; return <div className="screen"><PageTitle title={tx(p.locale,'通知','Notifications')} onBack={()=>p.navigate('home')} /><div className="notification-list">{items.map(({icon:Icon,title,body,time})=><button key={title} onClick={()=>p.openModal({type:'notice',title,body})}><Icon/><span><strong>{title}</strong><small>{body}</small></span><time>{time}</time></button>)}</div></div>; }
+function Notifications(p: ScreenProps) {
+  const items = [
+    {
+      icon: UsersRound,
+      title: tx(
+        p.locale,
+        "スタッフ招待メールを送信しました",
+        "Staff invitation sent",
+      ),
+      body: "suzuki@example.com",
+      time: "10:32",
+    },
+    {
+      icon: CalendarDays,
+      title: tx(
+        p.locale,
+        `${monthLabel(p.scheduling.collectionMonth, p.locale)}のシフト希望を提出してください`,
+        `Submit availability for ${monthLabel(p.scheduling.collectionMonth, p.locale)}`,
+      ),
+      body: `${tx(p.locale, "締切", "Due")} ${p.scheduling.deadline}`,
+      time: "09:15",
+    },
+    {
+      icon: LockKeyhole,
+      title: tx(
+        p.locale,
+        "パスワード再設定メールを送信しました",
+        "Password reset email sent",
+      ),
+      body: `${p.authenticatedAccount.email} · ${p.stores.find((store) => store.id === p.storeId)?.code}`,
+      time: tx(p.locale, "昨日", "Yesterday"),
+    },
+  ];
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "通知", "Notifications")}
+        onBack={() => p.navigate("home")}
+      />
+      <div className="notification-list">
+        {items
+          .filter(
+            (_, index) => index !== 1 || p.effectiveFeatures.SHIFT_COLLECTION,
+          )
+          .map(({ icon: Icon, title, body, time }) => (
+            <button
+              key={title}
+              onClick={() => p.openModal({ type: "notice", title, body })}
+            >
+              <Icon />
+              <span>
+                <strong>{title}</strong>
+                <small>{body}</small>
+              </span>
+              <time>{time}</time>
+            </button>
+          ))}
+      </div>
+    </div>
+  );
+}
 
-function Settings(p: ScreenProps) { const admin=p.role==='ADMIN'; const rows:Array<[typeof Building2,string,Screen]> = admin?[[Building2,tx(p.locale,'店舗管理','Stores'),'stores'],[CreditCard,tx(p.locale,'プランとお支払い','Plan & billing'),'subscription'],[LockKeyhole,tx(p.locale,'利用する機能','Features in use'),'featureSettings']]:[]; if(p.effectiveFeatures.ATTENDANCE){if(admin)rows.push([Smartphone,tx(p.locale,'共用端末打刻','Shared kiosk'),'kiosk']);else rows.push([ReceiptText,tx(p.locale,'勤怠履歴','Attendance history'),'attendanceHistory']);} if(p.effectiveFeatures.GPS)rows.push([MapPinned,'GPS','gps']); if(p.effectiveFeatures.ESTIMATED_PAY)rows.push([WalletCards,tx(p.locale,'給与概算','Estimated pay'),'payroll']); return <div className="screen"><PageTitle title={tx(p.locale,'その他','More')} /><div className="settings-profile"><span className="avatar">{admin?'管':'田'}</span><span><strong>{admin?tx(p.locale,'管理者アカウント','Admin account'):tx(p.locale,'メンバーアカウント','Member account')}</strong><small>{admin?'admin@example.com':'member@example.com'}</small></span></div><div className="settings-group">{rows.map(([Icon,label,target])=><button key={target} onClick={()=>p.navigate(target)}><Icon/><span>{label}</span><ChevronRight/></button>)}</div><div className="settings-group"><button onClick={()=>p.navigate('notifications')}><BellRing/><span>{tx(p.locale,'通知','Notifications')}</span><ChevronRight/></button><button onClick={()=>p.navigate('language')}><Languages/><span>{tx(p.locale,'言語','Language')}</span><ChevronRight/></button><button onClick={()=>p.navigate('feedback')}><MessageCircleMore/><span>{tx(p.locale,'フィードバック','Feedback')}</span><ChevronRight/></button></div><button className="logout-button" onClick={()=>p.openModal({type:'confirm',title:tx(p.locale,'ログアウトしますか？','Log out?'),body:tx(p.locale,'ログイン画面へ戻ります。','Return to login.'),onConfirm:p.logout})}><LogOut/>{tx(p.locale,'ログアウト','Log out')}</button></div>; }
+function Settings(p: ScreenProps) {
+  const admin = p.role === "ADMIN";
+  const rows: Array<[typeof Building2, string, Screen]> = admin
+    ? [
+        [Building2, tx(p.locale, "店舗管理", "Stores"), "stores"],
+        [
+          CreditCard,
+          tx(p.locale, "プランとお支払い", "Plan & billing"),
+          "subscription",
+        ],
+        [
+          LockKeyhole,
+          tx(p.locale, "利用する機能", "Features in use"),
+          "featureSettings",
+        ],
+      ]
+    : [];
+  if (p.effectiveFeatures.ATTENDANCE) {
+    if (admin)
+      rows.push([
+        Smartphone,
+        tx(p.locale, "共用端末打刻", "Shared kiosk"),
+        "kiosk",
+      ]);
+    else
+      rows.push([
+        ReceiptText,
+        tx(p.locale, "勤怠履歴", "Attendance history"),
+        "attendanceHistory",
+      ]);
+  }
+  if (p.effectiveFeatures.GPS) rows.push([MapPinned, "GPS", "gps"]);
+  if (p.effectiveFeatures.ESTIMATED_PAY)
+    rows.push([
+      WalletCards,
+      tx(p.locale, "給与概算", "Estimated pay"),
+      "payroll",
+    ]);
+  return (
+    <div className="screen">
+      <PageTitle title={tx(p.locale, "その他", "More")} />
+      <div className="settings-profile">
+        <span className="avatar">{admin ? "管" : "田"}</span>
+        <span>
+          <strong>
+            {admin
+              ? tx(p.locale, "管理者アカウント", "Admin account")
+              : tx(p.locale, "メンバーアカウント", "Member account")}
+          </strong>
+          <small>{p.authenticatedAccount.email}</small>
+          <small>
+            {tx(p.locale, "店舗ID", "Store ID")} ·{" "}
+            {p.stores.find((store) => store.id === p.storeId)?.code}
+          </small>
+        </span>
+      </div>
+      <div className="settings-group">
+        {rows.map(([Icon, label, target]) => (
+          <button key={target} onClick={() => p.navigate(target)}>
+            <Icon />
+            <span>{label}</span>
+            <ChevronRight />
+          </button>
+        ))}
+      </div>
+      <div className="settings-group">
+        <button onClick={() => p.navigate("notifications")}>
+          <BellRing />
+          <span>{tx(p.locale, "通知", "Notifications")}</span>
+          <ChevronRight />
+        </button>
+        <button onClick={() => p.navigate("language")}>
+          <Languages />
+          <span>{tx(p.locale, "言語", "Language")}</span>
+          <ChevronRight />
+        </button>
+        <button onClick={() => p.navigate("feedback")}>
+          <MessageCircleMore />
+          <span>{tx(p.locale, "フィードバック", "Feedback")}</span>
+          <ChevronRight />
+        </button>
+      </div>
+      <button
+        className="logout-button"
+        onClick={() =>
+          p.openModal({
+            type: "confirm",
+            title: tx(p.locale, "ログアウトしますか？", "Log out?"),
+            body: tx(p.locale, "ログイン画面へ戻ります。", "Return to login."),
+            onConfirm: p.logout,
+          })
+        }
+      >
+        <LogOut />
+        {tx(p.locale, "ログアウト", "Log out")}
+      </button>
+    </div>
+  );
+}
 
-function Language(p: ScreenProps) { return <div className="screen"><PageTitle title={tx(p.locale,'言語','Language')} onBack={()=>p.navigate('settings')} /><div className="language-options"><button className={p.locale==='ja'?'selected':''} onClick={()=>p.setLocale('ja')}><span>日本語<small>Japanese</small></span>{p.locale==='ja'&&<Check/>}</button><button className={p.locale==='en'?'selected':''} onClick={()=>p.setLocale('en')}><span>English<small>英語</small></span>{p.locale==='en'&&<Check/>}</button></div></div>; }
-function Feedback(p: ScreenProps) { const [rating,setRating]=useState(0); const [text,setText]=useState(''); return <div className="screen"><PageTitle title={tx(p.locale,'フィードバック','Feedback')} onBack={()=>p.navigate('settings')} /><div className="feedback-card"><MessageCircleMore/><h3>{tx(p.locale,'Crewamiはいかがですか？','How is Crewami?')}</h3><div className="rating-row">{[1,2,3,4,5].map((n)=><button key={n} className={rating===n?'selected':''} onClick={()=>setRating(n)}>{['😕','🙁','😐','🙂','😍'][n-1]}</button>)}</div><textarea value={text} onChange={(e)=>setText(e.target.value)} /><button className="primary-button" disabled={!rating} onClick={()=>{p.openModal({type:'success',title:tx(p.locale,'ありがとうございます','Thank you'),body:tx(p.locale,'送信しました。','Feedback sent.')});setRating(0);setText('');}}><Send />{tx(p.locale,'送信','Send')}</button></div></div>; }
+function Language(p: ScreenProps) {
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "言語", "Language")}
+        onBack={() => p.navigate("settings")}
+      />
+      <div className="language-options">
+        <button
+          className={p.locale === "ja" ? "selected" : ""}
+          onClick={() => p.setLocale("ja")}
+        >
+          <span>
+            日本語<small>Japanese</small>
+          </span>
+          {p.locale === "ja" && <Check />}
+        </button>
+        <button
+          className={p.locale === "en" ? "selected" : ""}
+          onClick={() => p.setLocale("en")}
+        >
+          <span>
+            English<small>英語</small>
+          </span>
+          {p.locale === "en" && <Check />}
+        </button>
+      </div>
+    </div>
+  );
+}
+function Feedback(p: ScreenProps) {
+  const [rating, setRating] = useState(0);
+  const [text, setText] = useState("");
+  return (
+    <div className="screen">
+      <PageTitle
+        title={tx(p.locale, "フィードバック", "Feedback")}
+        onBack={() => p.navigate("settings")}
+      />
+      <div className="feedback-card">
+        <MessageCircleMore />
+        <h3>{tx(p.locale, "Crewamiはいかがですか？", "How is Crewami?")}</h3>
+        <div className="rating-row">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              className={rating === n ? "selected" : ""}
+              onClick={() => setRating(n)}
+            >
+              {["😕", "🙁", "😐", "🙂", "😍"][n - 1]}
+            </button>
+          ))}
+        </div>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} />
+        <button
+          className="primary-button"
+          disabled={!rating}
+          onClick={() => {
+            p.openModal({
+              type: "success",
+              title: tx(p.locale, "ありがとうございます", "Thank you"),
+              body: tx(p.locale, "送信しました。", "Feedback sent."),
+            });
+            setRating(0);
+            setText("");
+          }}
+        >
+          <Send />
+          {tx(p.locale, "送信", "Send")}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function PrototypeScreens(p: ScreenProps) {
-  if (p.subscriptionStatus === 'expired' && !['settings','subscription','notifications','language','feedback'].includes(p.screen)) return <ExpiredScreen locale={p.locale} role={p.role} navigate={p.navigate} />;
-  const requiredFeature: Partial<Record<Screen, keyof FeatureFlags>> = { collection:'SHIFT_COLLECTION',availabilityRequest:'SHIFT_COLLECTION',availability:'SHIFT_COLLECTION',export:'SHIFT_COLLECTION',customIntegration:'SHIFT_COLLECTION',customQuote:'SHIFT_COLLECTION',builder:'SCHEDULE',publish:'SCHEDULE',schedule:'SCHEDULE',attendance:'ATTENDANCE',teamAttendance:'ATTENDANCE',attendanceHistory:'ATTENDANCE',attendanceDetail:'ATTENDANCE',kiosk:'ATTENDANCE',openShifts:'OPEN_SHIFTS',gps:'GPS',payroll:'ESTIMATED_PAY' };
+  if (
+    p.subscriptionStatus === "expired" &&
+    ![
+      "settings",
+      "subscription",
+      "notifications",
+      "language",
+      "feedback",
+    ].includes(p.screen)
+  )
+    return (
+      <ExpiredScreen locale={p.locale} role={p.role} navigate={p.navigate} />
+    );
+  const requiredFeature: Partial<Record<Screen, keyof FeatureFlags>> = {
+    collection: "SHIFT_COLLECTION",
+    availabilityRequest: "SHIFT_COLLECTION",
+    availability: "SHIFT_COLLECTION",
+    export: "SHIFT_COLLECTION",
+    customIntegration: "SHIFT_COLLECTION",
+    customQuote: "SHIFT_COLLECTION",
+    builder: "SCHEDULE",
+    publish: "SCHEDULE",
+    schedule: "SCHEDULE",
+    attendance: "ATTENDANCE",
+    teamAttendance: "ATTENDANCE",
+    attendanceHistory: "ATTENDANCE",
+    attendanceDetail: "ATTENDANCE",
+    kiosk: "ATTENDANCE",
+    openShifts: "OPEN_SHIFTS",
+    gps: "GPS",
+    payroll: "ESTIMATED_PAY",
+  };
   const required = requiredFeature[p.screen];
-  if (required && !p.effectiveFeatures[required]) return p.role === 'ADMIN' ? <AdminHome {...p} /> : <MemberHome {...p} />;
+  if (required && !p.effectiveFeatures[required])
+    return p.role === "ADMIN" ? <AdminHome {...p} /> : <MemberHome {...p} />;
   switch (p.screen) {
-    case 'home': return p.role==='ADMIN'?<AdminHome {...p}/>:<MemberHome {...p}/>;
-    case 'collection': return <CollectionScreen {...p}/>; case 'availabilityRequest': return <AvailabilityRequest {...p}/>; case 'availability': return <AvailabilityScreen {...p}/>;
-    case 'builder': return <Builder {...p}/>; case 'publish': return <Publish {...p}/>; case 'schedule': return <MemberSchedule {...p}/>;
-    case 'attendance': return <AttendanceClock {...p}/>; case 'teamAttendance': return <TeamAttendance {...p}/>; case 'attendanceHistory': return <AttendanceHistory {...p}/>;
-    case 'attendanceDetail': return <AttendanceDetailScreen locale={p.locale} navigate={p.navigate} role={p.role} audits={p.attendanceAudits} setAudits={p.setAttendanceAudits}/>;
-    case 'staff': return <StaffScreen {...p}/>; case 'staffDetail': return <StaffDetail {...p}/>; case 'staffForm': return <StaffForm {...p}/>;
-    case 'stores': return <Stores {...p}/>; case 'storeForm': return <StoreForm {...p}/>; case 'openShifts': return <OpenShifts {...p}/>; case 'gps': return <GPS {...p}/>;
-    case 'subscription': return <SubscriptionScreen locale={p.locale} navigate={p.navigate} status={p.subscriptionStatus} plan={p.plan} activeUsers={p.activeUsers} onPurchase={p.purchasePlan}/>;
-    case 'featureSettings': return <FeatureSettingsScreen locale={p.locale} navigate={p.navigate} entitlements={p.entitlements} enabled={p.adminEnabledFeatures} setEnabled={p.setAdminEnabledFeatures} openModal={p.openModal}/>;
-    case 'export': return <ExportScreen locale={p.locale} navigate={p.navigate} includeConfirmed={p.entitlements.SCHEDULE}/>;
-    case 'customIntegration': return <CustomIntegrationScreen locale={p.locale} navigate={p.navigate} status={p.customOrderStatus} setStatus={p.setCustomOrderStatus}/>;
-    case 'customQuote': return <CustomQuoteScreen locale={p.locale} navigate={p.navigate} status={p.customOrderStatus} setStatus={p.setCustomOrderStatus}/>;
-    case 'kiosk': return <KioskScreen locale={p.locale} navigate={p.navigate} staff={p.staff}/>;
-    case 'payroll': return <PayrollScreen locale={p.locale} navigate={p.navigate} role={p.role} staff={p.staff} setStaff={p.setStaff} selectedStaffId={p.selectedStaffId} setSelectedStaffId={p.setSelectedStaffId}/>;
-    case 'notifications': return <Notifications {...p}/>; case 'language': return <Language {...p}/>; case 'feedback': return <Feedback {...p}/>;
-    default: return <Settings {...p}/>;
+    case "home":
+      return p.role === "ADMIN" ? <AdminHome {...p} /> : <MemberHome {...p} />;
+    case "collection":
+      return <CollectionScreen {...p} />;
+    case "availabilityRequest":
+      return <AvailabilityRequest {...p} />;
+    case "availability":
+      return <AvailabilityScreen {...p} />;
+    case "builder":
+      return <Builder {...p} />;
+    case "publish":
+      return <Publish {...p} />;
+    case "schedule":
+      return <MemberSchedule {...p} />;
+    case "attendance":
+      return <AttendanceClock {...p} />;
+    case "teamAttendance":
+      return <TeamAttendance {...p} />;
+    case "attendanceHistory":
+      return <AttendanceHistory {...p} />;
+    case "attendanceDetail":
+      return (
+        <AttendanceDetailScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          role={p.role}
+          audits={p.attendanceAudits}
+          setAudits={p.setAttendanceAudits}
+        />
+      );
+    case "staff":
+      return <StaffScreen {...p} />;
+    case "staffDetail":
+      return <StaffDetail {...p} />;
+    case "staffForm":
+      return <StaffForm {...p} />;
+    case "stores":
+      return <Stores {...p} />;
+    case "storeForm":
+      return <StoreForm {...p} />;
+    case "openShifts":
+      return <OpenShifts {...p} />;
+    case "gps":
+      return <GPS {...p} />;
+    case "subscription":
+      return (
+        <SubscriptionScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          status={p.subscriptionStatus}
+          plan={p.plan}
+          activeUsers={p.activeUsers}
+          onPurchase={p.purchasePlan}
+        />
+      );
+    case "featureSettings":
+      return (
+        <FeatureSettingsScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          entitlements={p.entitlements}
+          enabled={p.adminEnabledFeatures}
+          setEnabled={p.setAdminEnabledFeatures}
+          openModal={p.openModal}
+        />
+      );
+    case "export":
+      return (
+        <ExportScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          includeConfirmed={p.entitlements.SCHEDULE}
+          month={p.scheduling.collectionMonth}
+          exportRows={availabilityExportRows(
+            p.staff,
+            p.scheduling.collectionMonth,
+            p.scheduling.submissions,
+          )}
+          confirmedRows={p.scheduling.exportDays.flatMap((day) =>
+            day.rows.flatMap((row) => {
+              const person = p.staff.find((item) => item.id === row.staffId);
+              return person && row.confirmed
+                ? [
+                    [
+                      person.ja,
+                      person.email,
+                      day.id,
+                      "確定シフト",
+                      row.confirmed.start,
+                      row.confirmed.end,
+                    ],
+                  ]
+                : [];
+            }),
+          )}
+        />
+      );
+    case "customIntegration":
+      return (
+        <CustomIntegrationScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          status={p.customOrderStatus}
+          setStatus={p.setCustomOrderStatus}
+        />
+      );
+    case "customQuote":
+      return (
+        <CustomQuoteScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          status={p.customOrderStatus}
+          setStatus={p.setCustomOrderStatus}
+        />
+      );
+    case "kiosk":
+      return (
+        <KioskScreen locale={p.locale} navigate={p.navigate} staff={p.staff} />
+      );
+    case "payroll":
+      return (
+        <PayrollScreen
+          locale={p.locale}
+          navigate={p.navigate}
+          role={p.role}
+          staff={p.staff}
+          setStaff={p.setStaff}
+          selectedStaffId={p.selectedStaffId}
+          setSelectedStaffId={p.setSelectedStaffId}
+        />
+      );
+    case "notifications":
+      return <Notifications {...p} />;
+    case "language":
+      return <Language {...p} />;
+    case "feedback":
+      return <Feedback {...p} />;
+    default:
+      return <Settings {...p} />;
   }
 }
