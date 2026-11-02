@@ -14,8 +14,84 @@ import {
   monthDates,
   shiftMonth,
   validateRanges,
+  setAvailabilityForDates,
+  type AvailabilityByStaff,
   type Submissions,
 } from "../lib/scheduling";
+
+test("bulk entry replaces only the selected staff and dates without changing saved snapshots", () => {
+  const original: AvailabilityByStaff = {
+    tanaka: {
+      "2026-11-03": { date: "2026-11-03", unavailable: true, ranges: [] },
+      "2026-11-16": { date: "2026-11-16", unavailable: true, ranges: [] },
+      "2026-12-01": { date: "2026-12-01", unavailable: true, ranges: [] },
+    },
+    yamada: {
+      "2026-11-03": { date: "2026-11-03", unavailable: true, ranges: [] },
+    },
+  };
+  const dates = monthDates("2026-11").slice(0, 15);
+  const result = setAvailabilityForDates(original, "tanaka", dates, {
+    start: "00:00",
+    end: "24:00",
+  });
+  for (const date of dates)
+    assert.deepEqual(result.tanaka[date], {
+      date,
+      unavailable: false,
+      ranges: [{ start: "00:00", end: "24:00" }],
+    });
+  assert.equal(original.tanaka["2026-11-03"].unavailable, true);
+  assert.equal(result.tanaka["2026-11-16"], original.tanaka["2026-11-16"]);
+  assert.equal(result.tanaka["2026-12-01"], original.tanaka["2026-12-01"]);
+  assert.equal(result.yamada, original.yamada);
+  assert.notEqual(
+    result.tanaka[dates[0]].ranges[0],
+    result.tanaka[dates[1]].ranges[0],
+  );
+  const sameHours = setAvailabilityForDates(result, "tanaka", dates, {
+    start: "10:00",
+    end: "18:00",
+  });
+  for (const date of dates)
+    assert.deepEqual(sameHours.tanaka[date].ranges, [
+      { start: "10:00", end: "18:00" },
+    ]);
+  assert.deepEqual(result.tanaka[dates[0]].ranges, [
+    { start: "00:00", end: "24:00" },
+  ]);
+  const adminStaff = initialStaff.find((person) => person.role === "ADMIN")!;
+  const adminResult = setAvailabilityForDates(
+    sameHours,
+    adminStaff.id,
+    monthDates("2026-11"),
+    { start: "12:00", end: "18:00" },
+  );
+  assert.equal(adminResult.tanaka, sameHours.tanaka);
+  assert.equal(Object.keys(adminResult[adminStaff.id]).length, 30);
+  assert.deepEqual(adminResult[adminStaff.id]["2026-11-03"].ranges, [
+    { start: "12:00", end: "18:00" },
+  ]);
+  assert.equal(sameHours[adminStaff.id]["2026-11-03"].unavailable, true);
+});
+
+test("invalid bulk times leave existing availability unchanged", () => {
+  const current: AvailabilityByStaff = {};
+  assert.equal(
+    setAvailabilityForDates(current, "tanaka", monthDates("2026-11"), {
+      start: "18:00",
+      end: "10:00",
+    }),
+    current,
+  );
+  assert.equal(
+    setAvailabilityForDates(current, "tanaka", monthDates("2026-11"), {
+      start: "10:00",
+      end: "10:00",
+    }),
+    current,
+  );
+});
 
 test("month navigation includes the entire month and handles leap years", () => {
   assert.equal(monthDates("2026-11").length, 30);

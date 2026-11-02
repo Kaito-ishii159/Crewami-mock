@@ -26,6 +26,18 @@ import {
   type AvailabilityDay,
 } from "@/lib/scheduling";
 import type { SchedulingState } from "./useScheduling";
+import {
+  AvailabilityBulkEntry,
+  AvailabilityTimeSelect,
+} from "./AvailabilityBulkEntry";
+
+function isAllDay(ranges: TimeRange[]) {
+  return (
+    ranges.length === 1 &&
+    ranges[0].start === "00:00" &&
+    ranges[0].end === "24:00"
+  );
+}
 
 function DayEditor({
   date,
@@ -74,7 +86,7 @@ function DayEditor({
           if (event.key === "Escape") onClose();
           if (event.key === "Tab") {
             const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-              "button:not(:disabled), input",
+              "button:not(:disabled), input, select",
             );
             if (!focusable?.length) return;
             const first = focusable[0];
@@ -105,10 +117,31 @@ function DayEditor({
         </div>
         <p className="editor-hint">
           {tx(
-            "授業の前後など、時間帯を分けて登録できます。",
-            "Add separate times for split availability.",
+            "この日だけ変更できます。時間は下から選んで、保存してください。",
+            "Changes apply to this day only. Select the hours below, then save.",
           )}
         </p>
+        <button
+          className={`secondary-button day-all-time ${isAllDay(ranges) ? "is-all-day" : ""}`}
+          onClick={() =>
+            onSave({
+              date,
+              unavailable: false,
+              ranges: [{ start: "00:00", end: "24:00" }],
+            })
+          }
+        >
+          {isAllDay(ranges) && <Check />}
+          {tx("この日は全時間OK", "Any time on this day")}
+        </button>
+        {isAllDay(ranges) && (
+          <p className="day-all-time-note">
+            {tx(
+              "全時間OK（時間指定なし）で登録されています。",
+              "Available all day, with no time restriction.",
+            )}
+          </p>
+        )}
         <div className="range-list">
           {ranges.map((range, index) => (
             <fieldset className="range-card" key={index}>
@@ -118,35 +151,26 @@ function DayEditor({
               <div className="range-fields">
                 <label>
                   <span>{tx("開始", "Start")}</span>
-                  <input
-                    aria-label={tx(
+                  <AvailabilityTimeSelect
+                    label={tx(
                       `時間帯${index + 1} 開始`,
                       `Range ${index + 1} start`,
                     )}
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="09:00"
                     value={range.start}
-                    onChange={(event) =>
-                      update(index, "start", event.target.value)
-                    }
+                    onChange={(value) => update(index, "start", value)}
                   />
                 </label>
                 <span>—</span>
                 <label>
                   <span>{tx("終了", "End")}</span>
-                  <input
-                    aria-label={tx(
+                  <AvailabilityTimeSelect
+                    label={tx(
                       `時間帯${index + 1} 終了`,
                       `Range ${index + 1} end`,
                     )}
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="13:00"
                     value={range.end}
-                    onChange={(event) =>
-                      update(index, "end", event.target.value)
-                    }
+                    onChange={(value) => update(index, "end", value)}
+                    end
                   />
                 </label>
                 <button
@@ -231,6 +255,7 @@ export function AvailabilityCalendar({
   const [month, setMonth] = useState(scheduling.collectionMonth);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [submittedView, setSubmittedView] = useState(false);
+  const [feedback, setFeedback] = useState("");
   const days = monthDates(month);
   const drafts = scheduling.availabilityByStaff[person.id] ?? {};
   const entered = days.filter((date) => drafts[date]).length;
@@ -249,6 +274,7 @@ export function AvailabilityCalendar({
   function changeMonth(offset: number) {
     setMonth((current) => shiftMonth(current, offset));
     setSubmittedView(false);
+    setFeedback("");
   }
   return (
     <div className="screen calendar-screen">
@@ -289,10 +315,37 @@ export function AvailabilityCalendar({
       {month !== scheduling.collectionMonth && (
         <button
           className="return-collection-month"
-          onClick={() => setMonth(scheduling.collectionMonth)}
+          onClick={() => {
+            setMonth(scheduling.collectionMonth);
+            setFeedback("");
+          }}
         >
           {tx("募集対象月へ戻る", "Return to collection month")}
         </button>
+      )}
+      {!submittedView && (
+        <AvailabilityBulkEntry
+          key={month}
+          locale={locale}
+          month={month}
+          dayCount={days.length}
+          hasEntries={entered > 0}
+          onApply={(range) => {
+            scheduling.saveDates(person.id, days, range);
+            setFeedback(
+              tx(
+                `${days.length}日分を${range.start}〜${range.end}にしました。日付を押すと、その日だけ変更できます。`,
+                `All ${days.length} days set to ${range.start}–${range.end}. Tap a date to change just that day.`,
+              ),
+            );
+          }}
+        />
+      )}
+      {feedback && !submittedView && (
+        <p className="bulk-result" role="status">
+          <Check aria-hidden="true" />
+          {feedback}
+        </p>
       )}
       <div className="calendar-progress">
         <span>
@@ -367,18 +420,21 @@ export function AvailabilityCalendar({
               ))}
               {days.map((date) => {
                 const day = drafts[date];
+                const allDay = isAllDay(day?.ranges ?? []);
                 const number = Number(date.slice(-2));
                 const summary = day?.unavailable
                   ? tx("勤務不可", "Unavailable")
-                  : day?.ranges.length
-                    ? tx(
-                        `${day.ranges.length}件`,
-                        `${day.ranges.length} ranges`,
-                      )
-                    : tx("未入力", "Not entered");
+                  : allDay
+                    ? tx("全時間OK", "All day")
+                    : day?.ranges.length
+                      ? tx(
+                          `${day.ranges.length}件`,
+                          `${day.ranges.length} ranges`,
+                        )
+                      : tx("未入力", "Not entered");
                 return (
                   <button
-                    className={`calendar-day ${day?.unavailable ? "is-unavailable" : day?.ranges.length ? "has-ranges" : ""}`}
+                    className={`calendar-day ${day?.unavailable ? "is-unavailable" : day?.ranges.length ? "has-ranges" : ""} ${allDay ? "is-all-day" : ""}`}
                     key={date}
                     aria-label={`${dateLabel(date, locale)} ${summary}`}
                     onClick={() => setEditingDate(date)}
@@ -393,13 +449,16 @@ export function AvailabilityCalendar({
                         <span className="calendar-day-status">
                           ● <small>{summary}</small>
                         </span>
-                        <span className="calendar-range-summary">
-                          {day.ranges.slice(0, 2).map((range, index) => (
-                            <small key={index}>
-                              {range.start.slice(0, 5)}–{range.end.slice(0, 5)}
-                            </small>
-                          ))}
-                        </span>
+                        {!allDay && (
+                          <span className="calendar-range-summary">
+                            {day.ranges.slice(0, 2).map((range, index) => (
+                              <small key={index}>
+                                {range.start.slice(0, 5)}–
+                                {range.end.slice(0, 5)}
+                              </small>
+                            ))}
+                          </span>
+                        )}
                       </>
                     ) : (
                       <span className="calendar-unentered">○</span>
@@ -452,6 +511,12 @@ export function AvailabilityCalendar({
           onSave={(day) => {
             scheduling.saveDay(person.id, day);
             setEditingDate(null);
+            setFeedback(
+              tx(
+                `${dateLabel(day.date, locale)}を${day.unavailable ? "勤務不可" : isAllDay(day.ranges) ? "全時間OK" : "指定した時間"}にしました。他の日の希望はそのままです。`,
+                `Updated ${dateLabel(day.date, locale)}. Other days are unchanged.`,
+              ),
+            );
           }}
         />
       )}
