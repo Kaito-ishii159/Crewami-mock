@@ -24,6 +24,32 @@ export type Confirmations = Record<
   Record<string, TimeRange | undefined>
 >;
 
+/** Replace only the given staff member's displayed dates; submitted snapshots stay untouched. */
+export function setAvailabilityForDates(
+  current: AvailabilityByStaff,
+  staffId: string,
+  dates: string[],
+  range: TimeRange,
+): AvailabilityByStaff {
+  if (validateRanges([range])) return current;
+  return {
+    ...current,
+    [staffId]: {
+      ...current[staffId],
+      ...Object.fromEntries(
+        dates.map((date) => [
+          date,
+          {
+            date,
+            unavailable: false,
+            ranges: [{ ...range }],
+          },
+        ]),
+      ),
+    },
+  };
+}
+
 export function monthDates(month: string): string[] {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return [];
   const [year, number] = month.split("-").map(Number);

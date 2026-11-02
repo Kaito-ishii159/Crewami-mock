@@ -5,6 +5,7 @@ import {
   generateShiftMonth,
   initialAvailability,
   initialSubmissions,
+  setAvailabilityForDates,
   type AvailabilityDay,
   type Confirmations,
 } from "@/lib/scheduling";
@@ -56,6 +57,11 @@ export function useScheduling(staff: StaffRecord[]) {
       },
     }));
   }
+  function saveDates(staffId: string, dates: string[], range: TimeRange) {
+    setAvailabilityByStaff((current) =>
+      setAvailabilityForDates(current, staffId, dates, range),
+    );
+  }
   function confirmShift(date: string, staffId: string, range?: TimeRange) {
     setConfirmations((current) => ({
       ...current,
@@ -81,6 +87,7 @@ export function useScheduling(staff: StaffRecord[]) {
     days,
     exportDays,
     saveDay,
+    saveDates,
     submitMonth,
     confirmShift,
   };

@@ -491,3 +491,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .timeline-selected-date { margin: 13px 0 8px; font-size: 12px; }.timeline-admin-badge { font-size: 6px; color: #6b866d; }
 .availability-choices { margin: 14px 0; padding: 12px; border-radius: 12px; background: var(--mint-soft); font-size: 10px; }.availability-choices > strong { margin-left: 6px; }.availability-choices button { width: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 38px; margin-top: 7px; padding: 6px 10px; border: 1px solid #c3dfd1; border-radius: 8px; color: #32634d; background: #fff; font-size: 11px; }
 .export-count { color: var(--ink-soft); font-size: 10px; }.export-confirmed { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 11px; }
+
+/* Shared availability input helpers */
+.availability-bulk { margin: 12px 0; padding: 15px; border: 1px solid #c9dfd2; border-radius: 16px; background: #edf7f1; }
+.availability-bulk h3 { margin: 0 0 7px; font-size: 17px; }
+.availability-bulk p { margin: 8px 0 12px; color: #49675a; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.availability-bulk .primary-button, .availability-bulk .secondary-button { min-height: 48px; font-size: 14px; }
+.bulk-time-settings { margin-top: 10px; padding-block: 12px; border: 1px solid #cfdfd4; border-radius: 12px; background: #fff; }
+.bulk-time-settings > .primary-button { width: calc(100% - 24px); margin: 12px 12px 0; }
+.bulk-time-fields { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; padding: 0 12px; }
+.bulk-time-fields label { min-width: 0; display: grid; gap: 6px; color: #49675a; font-size: 13px; font-weight: 750; }
+.bulk-time-fields select, .availability-editor .range-fields select { width: 100%; min-width: 0; min-height: 48px; padding: 0 7px; border: 1px solid #b9cfc0; border-radius: 9px; background: #fff; font-size: 16px; font-variant-numeric: tabular-nums; }
+.bulk-time-settings .calendar-validation { margin-inline: 12px; font-size: 12px; }
+.availability-bulk .bulk-help { margin-bottom: 0; }.bulk-confirmation { margin-top: 14px; padding: 14px; border: 1px solid #d6b284; border-radius: 12px; background: #fff8ee; }.bulk-confirmation:focus { outline: 2px solid #b9803e; outline-offset: 2px; }
+.bulk-confirmation p { color: #755230; }.bulk-confirmation strong { font-size: 14px; }.bulk-confirmation .secondary-button { margin-top: 8px; }
+.bulk-result { display: flex; align-items: flex-start; gap: 7px; margin: 12px 0; padding: 13px; border-radius: 12px; color: #225e42; background: #e1f2e7; font-size: 13px; line-height: 1.7; }.bulk-result svg { flex: 0 0 19px; margin-top: 3px; }
+.calendar-screen .calendar-day.is-all-day .calendar-day-status { display: grid; justify-items: center; gap: 4px; }.calendar-screen .calendar-day.is-all-day small { font-size: 9px; white-space: nowrap; }
+.calendar-screen .calendar-legend { font-size: 10px; }.calendar-screen .calendar-progress > span, .calendar-screen .calendar-progress p { font-size: 12px; }
+.availability-editor .day-all-time { min-height: 48px; font-size: 14px; margin-bottom: 13px; }.availability-editor .day-all-time.is-all-day { color: #245f44; border-color: #9dc4ab; background: #e5f3e9; }
+.availability-editor .editor-hint, .availability-editor .day-all-time-note { color: #49675a; font-size: 13px; line-height: 1.7; }.availability-editor .day-all-time-note { margin: 0 0 14px; }
+.availability-editor .range-fields { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) 44px; }.availability-editor .range-delete { height: 48px; }.availability-editor .range-card legend, .availability-editor .range-fields label { font-size: 12px; }
+.availability-editor .primary-button, .availability-editor .secondary-button, .availability-editor .add-range-button { min-height: 48px; font-size: 14px; }
